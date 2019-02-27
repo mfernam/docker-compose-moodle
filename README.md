@@ -1,2 +1,9 @@
-# install-moodle-script
-Shell script to install moodle 3.6
+
+**Requirements:**
+
+Based debian linux
+
+**Instructions:**
+
+Execute this script as sudoer.
+
