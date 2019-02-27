@@ -13,7 +13,7 @@ if [[ $apacheInstalled == "" ]]; then
 	echo "********************************************************";
 	echo "Installating Apache... Please wait!";
 	echo "********************************************************";
-	apt install apache2
+	apt -y install apache2
 else 
 	echo -e "\e[32m********************************************************";
 	echo "Apache Installed";
@@ -24,7 +24,7 @@ if [[ $mysqlInstalled == "" ]]; then
 	echo "********************************************************";
 	echo "Installating MySQL... Please wait!";
 	echo "********************************************************";
-	apt install mysql-server
+	apt -y install mysql-server
 	service mysql restart
 	mysql_secure_installation
 else
@@ -38,7 +38,7 @@ if [[ $phpInstalled == "" ]]; then
 	echo "Installating PHP... Please wait!";
 	echo "********************************************************";
 	service apache2 stop
-	apt install php7.0-zip php7.0-dev php7.0 php7.0-mbstring php7.0-zip php7.0-fpm php7.0-mcrypt php7.0-gd php7.0-mysql php7.0-soap php7.0-cgi php7.0-cli php7.0-common php7.0-curl php7.0-intl php7.0-phpdbg php7.0-xml php7.0-json php7.0-pspell php7.0-xmlrpc libapache2-mod-php
+	apt -y install php7.0-zip php7.0-dev php7.0 php7.0-mbstring php7.0-zip php7.0-fpm php7.0-mcrypt php7.0-gd php7.0-mysql php7.0-soap php7.0-cgi php7.0-cli php7.0-common php7.0-curl php7.0-intl php7.0-phpdbg php7.0-xml php7.0-json php7.0-pspell php7.0-xmlrpc libapache2-mod-php
 	service apache2 start
 else
 	echo -e "\e[32m********************************************************";
