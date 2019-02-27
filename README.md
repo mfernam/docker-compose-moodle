@@ -7,3 +7,4 @@ Based debian linux
 
 Execute this script as sudoer.
 
+When the script has finished open from browser moodle page: http://localhost/moodle
