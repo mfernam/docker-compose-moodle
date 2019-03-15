@@ -1,7 +1,7 @@
 # Dockerfile with apache server, php engine and moodle files
 FROM debian:latest as moodle
 
-LABEL Miguel Fernandez <miguel.fernandezm@goumh.umh.es>
+LABEL Miguel Fernandez <losmeusm@gmail.com>
 LABEL build_version=0.1
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && \
