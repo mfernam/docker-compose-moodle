@@ -1,3 +1,5 @@
+Docker-compose that create an initial installation of moodle.
+
 **Requirements**
 
 Docker and docker-compose installed. You have an script to install it:
