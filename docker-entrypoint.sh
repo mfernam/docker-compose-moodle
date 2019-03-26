@@ -1,3 +1,6 @@
-chown www-data:www-data /var/www/moodledata/
+#!/bin/bash
+set -e
 
-ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+chown www-data:www-data /var/www/moodledata/ /var/www/html/*
+
+exec /usr/sbin/apache2ctl -D FOREGROUND
