@@ -37,5 +37,6 @@ RUN tar -xzvf moodle-latest-36.tgz && rm moodle-latest-36.tgz && rm /var/www/htm
 
 WORKDIR /var/www/
 RUN mkdir /var/www/moodledata 
-
-ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+COPY ./docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["bash", "/usr/local/bin/docker-entrypoint.sh"]
