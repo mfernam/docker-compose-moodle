@@ -36,6 +36,6 @@ RUN tar -xzvf moodle-latest-36.tgz && rm moodle-latest-36.tgz && rm /var/www/htm
     mv /tmp/moodle/* /var/www/html/ 
 
 WORKDIR /var/www/
-RUN mkdir /var/www/moodledata && chown www-data:www-data /var/www/moodledata/
+RUN mkdir /var/www/moodledata 
 
 ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
