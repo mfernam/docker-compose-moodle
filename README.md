@@ -2,7 +2,7 @@ Docker-compose that create an initial installation of moodle.
 
 **Requirements**
 
-Docker and docker-compose installed. You have an script to install it:
+Docker and docker-compose installed. You can use this script to install it:
 https://gist.github.com/mfernam/1a4fc33d9bc39a01dc91d2e901896ab4
 
 
