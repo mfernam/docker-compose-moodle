@@ -2,9 +2,9 @@ version: '3.4'
 
 services:
 
-  mysqldb:
+  mysql:
     image: mysql:latest
-    container_name: mysql_db
+    container_name: mysql
     command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -14,30 +14,53 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - ./mysql_data:/var/lib/mysql
+      - ./data/mysql/data:/var/lib/mysql
     restart: always
     network_mode: "bridge"
     env_file: .env
 
-  moodle:
+  
+  php:
     build:
-      context: .
-      target: moodle
-    image: moodle:3.6
-    depends_on:
-      - mysqldb
-    container_name: moodle
-    environment:
-      APACHE_LOG_DIR: ${APACHE_LOG_DIR}
+      context: ./php7-fpm
+    image: php7-fpm:moodle
+    container_name: php7
+    ports:
+      - "9000:9000"
+    env_file: .env
+    volumes:
+      - ./data/moodle/moodle:/var/www/html/moodle
+      - ./data/moodle/moodledata:/var/www/moodledata
+    networks:
+      moodlenet:
+        ipv4_address: ${PHP_HOST} 
+
+  nginx:
+    image: nginx
+    container_name: nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./moodle_data:/var/www/moodledata
-    network_mode: "bridge"
+      - ./config/nginx:/etc/nginx/conf.d
+      - ./data/moodle/moodle:/var/www/html/moodle
+      - ./data/moodle/moodledata:/var/www/moodledata
+      - ./logs:/var/log/nginx
+    links:
+      - php
+    depends_on:
+      - php
+    env_file: .env
+    networks:
+      moodlenet:
+        ipv4_address: ${NGINX_HOST}  
   
 
-volumes:
-  moodle_data:
-    driver: local
-  mysql_data:
-    driver: local
+
+networks:
+  moodlenet:
+    driver: bridge    
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.0.0/24
