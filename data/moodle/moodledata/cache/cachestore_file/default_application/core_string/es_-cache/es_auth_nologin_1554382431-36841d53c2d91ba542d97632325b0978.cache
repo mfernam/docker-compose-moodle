@@ -1,0 +1,1 @@
+a:3:{s:23:"auth_nologindescription";s:195:"Conector (Plugin) auxiliar que previene que el usuario inicie sesión en el sistema y descarta cualquier correo enviado al usuario. Puede ser utilizado para <em>suspender</em> cuentas de usuario.";s:10:"pluginname";s:14:"No hay sesión";s:16:"privacy:metadata";s:68:"The No login authentication plugin does not store any personal data.";}

@@ -1,0 +1,16 @@
+s:1229:"<p>La actividad Cuestionario permite al profesor diseñar y plantear cuestionarios con preguntas tipo opción múltiple, verdadero/falso, coincidencia, respuesta corta y respuesta numérica</p>
+
+<p>El profesor puede permitir que el cuestionario se intente resolver varias veces, con las preguntas ordenadas o seleccionadas aleatoriamente del banco de preguntas. Se puede establecer un tiempo límite.</p>
+
+<p>Cada intento se califica automáticamente, con la excepción de las preguntas de tipo "ensayo", y el resultado se guarda en el libro de calificaciones.</p>
+
+<p>El profesor puede determinar si se muestran y cuándo se muestran al usuario los resultados, los comentarios de retroalimentación y las respuestas correctas.</p>
+
+<p>Los cuestionario pueden usarse para hacer</p>
+
+<ul><li>Exámenes del curso</li>
+<li>Mini Test para tareas de lectura o al final de un tema</li>
+<li>Exámenes de práctica con preguntas de exámenes anteriores</li>
+<li>Para ofrecer información inmediata sobre el rendimiento * Para auto-evaluación</li>
+</ul><div class="helpdoclink"><a href="https://docs.moodle.org/35/es/mod/quiz/view" class="helplinkpopup"><i class="icon fa fa-info-circle fa-fw iconhelp icon-pre"></i>Más ayuda</a></div>
+";

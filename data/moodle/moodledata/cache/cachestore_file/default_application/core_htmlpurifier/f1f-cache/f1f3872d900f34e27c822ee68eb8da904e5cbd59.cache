@@ -1,0 +1,3 @@
+s:498:"<p>Esta configuración permite cambiar los nombres mostrados en los roles usados en el curso. </p><p>Sólo se cambia el nombre mostrado - los permisos de los roles no se vean afectados. </p><p>Los nuevos nombres de los roles aparecerán en la página de participantes en el curso y allá donde se muestren estos.
+</p><p>Si el rol renombrado corresponde a un rol de gestor del curso, asignado por el administardor, el nuevo nombre del rol también aparecerá como parte de las listas de cursos.</p>
+";

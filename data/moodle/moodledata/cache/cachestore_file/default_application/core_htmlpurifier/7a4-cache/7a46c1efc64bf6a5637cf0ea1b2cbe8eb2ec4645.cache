@@ -1,0 +1,8 @@
+s:938:"<p>El recurso Carpeta permite al profesor mostrar un grupo de archivos relacionados dentro de una única carpeta. Se puede subir un archivo comprimido (zip) que se descomprimirá (unzip) posteriormente para mostrar su contenido, o bien, se puede crear una carpeta vacía y subir los archivos dentro de ella.</p>
+
+<p>Una carpeta se puede usar para:</p>
+
+<ul><li>Agrupar una serie de documentos sobre un tema, por ejemplo, un conjunto de exámenes de otros años en formato pdf, o una colección de archivos para crear un proyecto concreto por parte de los estudiantes.</li>
+<li>Crear un espacio de subida de archivos compartido entre los profesores del curso (se debería ocultar la carpeta a los alumnos para que lo vean solo los profesores)</li>
+</ul><div class="helpdoclink"><a href="https://docs.moodle.org/35/es/mod/folder/view" class="helplinkpopup"><i class="icon fa fa-info-circle fa-fw iconhelp icon-pre"></i>Más ayuda</a></div>
+";

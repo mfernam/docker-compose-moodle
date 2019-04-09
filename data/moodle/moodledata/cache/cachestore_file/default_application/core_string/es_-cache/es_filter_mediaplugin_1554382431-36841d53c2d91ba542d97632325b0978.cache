@@ -1,0 +1,3 @@
+a:5:{s:13:"fallbackaudio";s:15:"Enlace de audio";s:13:"fallbackvideo";s:16:"Enlace de vídeo";s:10:"filtername";s:21:"Conectores Multimedia";s:11:"linktomedia";s:371:"El filtro de plugins multimedia busca un enlace en el texto que apunte hacia un recurso multimedia y remplaza el enlace con un código del reproductor multimedia apropiado que pueda reproducir el recurso. También remplaza las etiquetas (tags) <video> y  <audio>  con los reproductores seleccionados de video y audio.
+
+<a href="{$a}">Gestionar reproductores de medios</a>";s:16:"privacy:metadata";s:63:"The Multimedia plugins plugin does not store any personal data.";}
