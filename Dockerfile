@@ -33,7 +33,7 @@ EXPOSE 80
 WORKDIR /tmp
 ADD "https://download.moodle.org/download.php/direct/stable36/moodle-latest-36.tgz" /tmp 
 RUN tar -xzvf moodle-latest-36.tgz && rm moodle-latest-36.tgz && rm /var/www/html/index.html && \
-    mv /tmp/moodle/* /var/www/html/ 
+    mv /tmp/moodle/* /var/www/html/ && chown www-data:www-data moodle/
 
 WORKDIR /var/www/
 RUN mkdir /var/www/moodledata 
