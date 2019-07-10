@@ -42,6 +42,8 @@ class document_services {
     const FINAL_PDF_FILEAREA = 'download';
     /** File area for combined pdf */
     const COMBINED_PDF_FILEAREA = 'combined';
+    /** File area for partial combined pdf */
+    const PARTIAL_PDF_FILEAREA = 'partial';
     /** File area for importing html */
     const IMPORT_HTML_FILEAREA = 'importhtml';
     /** File area for page images */
@@ -120,22 +122,22 @@ EOD;
      * @return string New html with no image tags.
      */
     protected static function strip_images($html) {
+        // Load HTML and suppress any parsing errors (DOMDocument->loadHTML() does not current support HTML5 tags).
         $dom = new DOMDocument();
-        $dom->loadHTML("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" . $html);
-        $images = $dom->getElementsByTagName('img');
-        $i = 0;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml version="1.0" encoding="UTF-8" ?>' . $html);
+        libxml_clear_errors();
 
-        for ($i = ($images->length - 1); $i >= 0; $i--) {
-            $node = $images->item($i);
+        // Find all img tags.
+        if ($imgnodes = $dom->getElementsByTagName('img')) {
+            // Replace img nodes with the img alt text without overriding DOM elements.
+            for ($i = ($imgnodes->length - 1); $i >= 0; $i--) {
+                $imgnode = $imgnodes->item($i);
+                $alt = ($imgnode->hasAttribute('alt')) ? ' [ ' . $imgnode->getAttribute('alt') . ' ] ' : ' ';
+                $textnode = $dom->createTextNode($alt);
 
-            if ($node->hasAttribute('alt')) {
-                $replacement = ' [ ' . $node->getAttribute('alt') . ' ] ';
-            } else {
-                $replacement = ' ';
+                $imgnode->parentNode->replaceChild($textnode, $imgnode);
             }
-
-            $text = $dom->createTextNode($replacement);
-            $node->parentNode->replaceChild($text, $node);
         }
         $count = 1;
         return str_replace("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>", "", $dom->saveHTML(), $count);
@@ -261,15 +263,23 @@ EOD;
             $submission = $assignment->get_user_submission($userid, false, $attemptnumber);
         }
 
+
         $contextid = $assignment->get_context()->id;
         $component = 'assignfeedback_editpdf';
         $filearea = self::COMBINED_PDF_FILEAREA;
+        $partialfilearea = self::PARTIAL_PDF_FILEAREA;
         $itemid = $grade->id;
         $filepath = '/';
         $filename = self::COMBINED_PDF_FILENAME;
         $fs = get_file_storage();
 
-        $combinedpdf = $fs->get_file($contextid, $component, $filearea, $itemid, $filepath, $filename);
+        $partialpdf = $fs->get_file($contextid, $component, $partialfilearea, $itemid, $filepath, $filename);
+        if (!empty($partialpdf)) {
+            $combinedpdf = $partialpdf;
+        } else {
+            $combinedpdf = $fs->get_file($contextid, $component, $filearea, $itemid, $filepath, $filename);
+        }
+
         if ($combinedpdf && $submission) {
             if ($combinedpdf->get_timemodified() < $submission->timemodified) {
                 // The submission has been updated since the PDF was generated.
@@ -381,6 +391,7 @@ EOD;
 
         $tmpdir = \make_temp_directory('assignfeedback_editpdf/pageimages/' . self::hash($assignment, $userid, $attemptnumber));
         $combined = $tmpdir . '/' . self::COMBINED_PDF_FILENAME;
+
         $document->get_combined_file()->copy_content_to($combined); // Copy the file.
 
         $pdf = new pdf();

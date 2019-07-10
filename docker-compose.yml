@@ -16,7 +16,9 @@ services:
     volumes:
       - ./data/mysql/data:/var/lib/mysql
     restart: always
-    network_mode: "bridge"
+    networks:
+      moodlenet:
+        ipv4_address: ${MYSQL_HOST}  
     env_file: .env
 
   

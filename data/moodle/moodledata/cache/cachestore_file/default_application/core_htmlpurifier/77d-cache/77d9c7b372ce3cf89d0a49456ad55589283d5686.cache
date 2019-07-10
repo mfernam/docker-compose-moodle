@@ -1,8 +1,0 @@
-s:1085:"<p>El recurso URL permite que el profesor pueda proporcionar un enlace de Internet como un recurso del curso. Todo aquello que esté disponible en línea, como documentos o imágenes, puede ser vinculado; la URL no tiene por qué ser la página principal de un sitio web. La dirección URL de una página web en particular puede ser copiada y pegada por el profesor, o bien, este puede utilizar el selector de archivo y seleccionar una URL desde un repositorio, como Flickr, YouTube o Wikimedia (dependiendo de qué repositorios están habilitados para el sitio).</p>
-
-<p>Hay una serie de opciones de visualización de la URL, como incrustada o abierta en una nueva ventana, y opciones avanzadas,  como parsear información a la URL, como el nombre de un estudiante.</p>
-
-<p>Tenga en cuenta que las URLs también pueden ser añadidas en otros recursos o actividades a través del editor de texto.</p>
-
-<div class="helpdoclink"><a href="https://docs.moodle.org/35/es/mod/url/view" class="helplinkpopup"><i class="icon fa fa-info-circle fa-fw iconhelp icon-pre"></i>Más ayuda</a></div>
-";

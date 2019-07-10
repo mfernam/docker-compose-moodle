@@ -115,7 +115,8 @@ class mod_assign_external extends external_api {
             try {
                 $context = context_module::instance($cm->id);
                 self::validate_context($context);
-                require_capability('mod/assign:grade', $context);
+                $assign = new assign($context, null, null);
+                $assign->require_view_grades();
             } catch (Exception $e) {
                 $requestedassignmentids = array_diff($requestedassignmentids, array($cm->instance));
                 $warning = array();
@@ -714,8 +715,8 @@ class mod_assign_external extends external_api {
             try {
                 $context = context_module::instance($cm->id);
                 self::validate_context($context);
-                require_capability('mod/assign:grade', $context);
                 $assign = new assign($context, null, null);
+                $assign->require_view_grades();
                 $assigns[] = $assign;
             } catch (Exception $e) {
                 $warnings[] = array(
@@ -771,7 +772,10 @@ class mod_assign_external extends external_api {
                         'plugins' => self::get_plugins_data($assign, $submissionplugins, $submissionrecord),
                         'gradingstatus' => $assign->get_grading_status($submissionrecord->userid)
                     );
-                    $submissions[] = $submission;
+
+                    if ($assign->can_view_submission($submissionrecord->userid)) {
+                        $submissions[] = $submission;
+                    }
                 }
             } else {
                 $warnings[] = array(

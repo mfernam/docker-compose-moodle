@@ -3911,6 +3911,163 @@ class core_moodlelib_testcase extends advanced_testcase {
     }
 
     /**
+     * Test allowemailaddresses setting.
+     *
+     * @param string $email Email address for the from user.
+     * @param string $config The CFG->allowemailaddresses config values
+     * @param false/string $result The expected result.
+     *
+     * @dataProvider data_email_is_not_allowed_for_allowemailaddresses
+     */
+    public function test_email_is_not_allowed_for_allowemailaddresses($email, $config, $result) {
+        $this->resetAfterTest();
+
+        set_config('allowemailaddresses', $config);
+        $this->assertEquals($result, email_is_not_allowed($email));
+    }
+
+    /**
+     * Data provider for data_email_is_not_allowed_for_allowemailaddresses.
+     *
+     * @return array Returns an array of test data for the above function.
+     */
+    public function data_email_is_not_allowed_for_allowemailaddresses() {
+        return [
+            // Test allowed domain empty list.
+            [
+                'email' => 'fromuser@example.com',
+                'config' => '',
+                'result' => false
+            ],
+            // Test from email is in allowed domain.
+            [
+                'email' => 'fromuser@example.com',
+                'config' => 'example.com test.com',
+                'result' => false
+            ],
+            // Test from email is in allowed domain but uppercase config.
+            [
+                'email' => 'fromuser@example.com',
+                'config' => 'EXAMPLE.com test.com',
+                'result' => false
+            ],
+            // Test from email is in allowed domain but uppercase email.
+            [
+                'email' => 'fromuser@EXAMPLE.com',
+                'config' => 'example.com test.com',
+                'result' => false
+            ],
+            // Test from email is in allowed subdomain.
+            [
+                'email' => 'fromuser@something.example.com',
+                'config' => '.example.com test.com',
+                'result' => false
+            ],
+            // Test from email is in allowed subdomain but uppercase config.
+            [
+                'email' => 'fromuser@something.example.com',
+                'config' => '.EXAMPLE.com test.com',
+                'result' => false
+            ],
+            // Test from email is in allowed subdomain but uppercase email.
+            [
+                'email' => 'fromuser@something.EXAMPLE.com',
+                'config' => '.example.com test.com',
+                'result' => false
+            ],
+            // Test from email is not in allowed domain.
+            [   'email' => 'fromuser@moodle.com',
+                'config' => 'example.com test.com',
+                'result' => get_string('emailonlyallowed', '', 'example.com test.com')
+            ],
+            // Test from email is not in allowed subdomain.
+            [   'email' => 'fromuser@something.example.com',
+                'config' => 'example.com test.com',
+                'result' => get_string('emailonlyallowed', '', 'example.com test.com')
+            ],
+        ];
+    }
+
+    /**
+     * Test denyemailaddresses setting.
+     *
+     * @param string $email Email address for the from user.
+     * @param string $config The CFG->denyemailaddresses config values
+     * @param false/string $result The expected result.
+     *
+     * @dataProvider data_email_is_not_allowed_for_denyemailaddresses
+     */
+    public function test_email_is_not_allowed_for_denyemailaddresses($email, $config, $result) {
+        $this->resetAfterTest();
+
+        set_config('denyemailaddresses', $config);
+        $this->assertEquals($result, email_is_not_allowed($email));
+    }
+
+
+    /**
+     * Data provider for test_email_is_not_allowed_for_denyemailaddresses.
+     *
+     * @return array Returns an array of test data for the above function.
+     */
+    public function data_email_is_not_allowed_for_denyemailaddresses() {
+        return [
+            // Test denied domain empty list.
+            [
+                'email' => 'fromuser@example.com',
+                'config' => '',
+                'result' => false
+            ],
+            // Test from email is in denied domain.
+            [
+                'email' => 'fromuser@example.com',
+                'config' => 'example.com test.com',
+                'result' => get_string('emailnotallowed', '', 'example.com test.com')
+            ],
+            // Test from email is in denied domain but uppercase config.
+            [
+                'email' => 'fromuser@example.com',
+                'config' => 'EXAMPLE.com test.com',
+                'result' => get_string('emailnotallowed', '', 'EXAMPLE.com test.com')
+            ],
+            // Test from email is in denied domain but uppercase email.
+            [
+                'email' => 'fromuser@EXAMPLE.com',
+                'config' => 'example.com test.com',
+                'result' => get_string('emailnotallowed', '', 'example.com test.com')
+            ],
+            // Test from email is in denied subdomain.
+            [
+                'email' => 'fromuser@something.example.com',
+                'config' => '.example.com test.com',
+                'result' => get_string('emailnotallowed', '', '.example.com test.com')
+            ],
+            // Test from email is in denied subdomain but uppercase config.
+            [
+                'email' => 'fromuser@something.example.com',
+                'config' => '.EXAMPLE.com test.com',
+                'result' => get_string('emailnotallowed', '', '.EXAMPLE.com test.com')
+            ],
+            // Test from email is in denied subdomain but uppercase email.
+            [
+                'email' => 'fromuser@something.EXAMPLE.com',
+                'config' => '.example.com test.com',
+                'result' => get_string('emailnotallowed', '', '.example.com test.com')
+            ],
+            // Test from email is not in denied domain.
+            [   'email' => 'fromuser@moodle.com',
+                'config' => 'example.com test.com',
+                'result' => false
+            ],
+            // Test from email is not in denied subdomain.
+            [   'email' => 'fromuser@something.example.com',
+                'config' => 'example.com test.com',
+                'result' => false
+            ],
+        ];
+    }
+
+    /**
      * Test safe method unserialize_array().
      */
     public function test_unserialize_array() {
@@ -4064,5 +4221,158 @@ class core_moodlelib_testcase extends advanced_testcase {
                 5,
             ],
         ];
+    }
+
+    /**
+     * Test that {@link get_callable_name()} describes the callable as expected.
+     *
+     * @dataProvider callable_names_provider
+     * @param callable $callable
+     * @param string $expectedname
+     */
+    public function test_get_callable_name($callable, $expectedname) {
+        $this->assertSame($expectedname, get_callable_name($callable));
+    }
+
+    /**
+     * Provides a set of callables and their human readable names.
+     *
+     * @return array of (string)case => [(mixed)callable, (string|bool)expected description]
+     */
+    public function callable_names_provider() {
+        return [
+            'integer' => [
+                386,
+                false,
+            ],
+            'boolean' => [
+                true,
+                false,
+            ],
+            'static_method_as_literal' => [
+                'my_foobar_class::my_foobar_method',
+                'my_foobar_class::my_foobar_method',
+            ],
+            'static_method_of_literal_class' => [
+                ['my_foobar_class', 'my_foobar_method'],
+                'my_foobar_class::my_foobar_method',
+            ],
+            'static_method_of_object' => [
+                [$this, 'my_foobar_method'],
+                'core_moodlelib_testcase::my_foobar_method',
+            ],
+            'method_of_object' => [
+                [new lang_string('parentlanguage', 'core_langconfig'), 'my_foobar_method'],
+                'lang_string::my_foobar_method',
+            ],
+            'function_as_literal' => [
+                'my_foobar_callback',
+                'my_foobar_callback',
+            ],
+            'function_as_closure' => [
+                function($a) { return $a; },
+                'Closure::__invoke',
+            ],
+        ];
+    }
+
+    /**
+     * Data provider for \core_moodlelib_testcase::test_get_complete_user_data().
+     *
+     * @return array
+     */
+    public function user_data_provider() {
+        return [
+            'Fetch data using a valid username' => [
+                'username', 's1', true
+            ],
+            'Fetch data using a valid username, different case' => [
+                'username', 'S1', true
+            ],
+            'Fetch data using a valid username, different case for fieldname and value' => [
+                'USERNAME', 'S1', true
+            ],
+            'Fetch data using an invalid username' => [
+                'username', 's2', false
+            ],
+            'Fetch by email' => [
+                'email', 's1@example.com', true
+            ],
+            'Fetch data using a non-existent email' => [
+                'email', 's2@example.com', false
+            ],
+            'Fetch data using a non-existent email, throw exception' => [
+                'email', 's2@example.com', false, dml_missing_record_exception::class
+            ],
+            'Multiple accounts with the same email' => [
+                'email', 's1@example.com', false, 1
+            ],
+            'Multiple accounts with the same email, throw exception' => [
+                'email', 's1@example.com', false, 1, dml_multiple_records_exception::class
+            ],
+            'Fetch data using a valid user ID' => [
+                'id', true, true
+            ],
+            'Fetch data using a non-existent user ID' => [
+                'id', false, false
+            ],
+        ];
+    }
+
+    /**
+     * Test for get_complete_user_data().
+     *
+     * @dataProvider user_data_provider
+     * @param string $field The field to use for the query.
+     * @param string|boolean $value The field value. When fetching by ID, set true to fetch valid user ID, false otherwise.
+     * @param boolean $success Whether we expect for the fetch to succeed or return false.
+     * @param int $allowaccountssameemail Value for $CFG->allowaccountssameemail.
+     * @param string $expectedexception The exception to be expected.
+     */
+    public function test_get_complete_user_data($field, $value, $success, $allowaccountssameemail = 0, $expectedexception = '') {
+        $this->resetAfterTest();
+
+        // Set config settings we need for our environment.
+        set_config('allowaccountssameemail', $allowaccountssameemail);
+
+        // Generate the user data.
+        $generator = $this->getDataGenerator();
+        $userdata = [
+            'username' => 's1',
+            'email' => 's1@example.com',
+        ];
+        $user = $generator->create_user($userdata);
+
+        if ($allowaccountssameemail) {
+            // Create another user with the same email address.
+            $generator->create_user(['email' => 's1@example.com']);
+        }
+
+        // Since the data provider can't know what user ID to use, do a special handling for ID field tests.
+        if ($field === 'id') {
+            if ($value) {
+                // Test for fetching data using a valid user ID. Use the generated user's ID.
+                $value = $user->id;
+            } else {
+                // Test for fetching data using a non-existent user ID.
+                $value = $user->id + 1;
+            }
+        }
+
+        // When an exception is expected.
+        $throwexception = false;
+        if ($expectedexception) {
+            $this->expectException($expectedexception);
+            $throwexception = true;
+        }
+
+        $fetcheduser = get_complete_user_data($field, $value, null, $throwexception);
+        if ($success) {
+            $this->assertEquals($user->id, $fetcheduser->id);
+            $this->assertEquals($user->username, $fetcheduser->username);
+            $this->assertEquals($user->email, $fetcheduser->email);
+        } else {
+            $this->assertFalse($fetcheduser);
+        }
     }
 }

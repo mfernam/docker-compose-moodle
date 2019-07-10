@@ -134,7 +134,7 @@ function chat_add_instance($chat) {
         $event->timesort    = $chat->chattime;
         $event->timeduration = 0;
 
-        calendar_event::create($event);
+        calendar_event::create($event, false);
     }
 
     if (!empty($chat->completionexpected)) {
@@ -174,7 +174,7 @@ function chat_update_instance($chat) {
             $event->timesort    = $chat->chattime;
 
             $calendarevent = calendar_event::load($event->id);
-            $calendarevent->update($event);
+            $calendarevent->update($event, false);
         } else {
             // Do not publish this event, so delete it.
             $calendarevent = calendar_event::load($event->id);
@@ -197,7 +197,7 @@ function chat_update_instance($chat) {
             $event->timesort    = $chat->chattime;
             $event->timeduration = 0;
 
-            calendar_event::create($event);
+            calendar_event::create($event, false);
         }
     }
 
@@ -501,7 +501,7 @@ function chat_prepare_update_events($chat, $cm = null) {
     if ($event->id = $DB->get_field('event', 'id', array('modulename' => 'chat', 'instance' => $chat->id,
             'eventtype' => CHAT_EVENT_TYPE_CHATTIME))) {
         $calendarevent = calendar_event::load($event->id);
-        $calendarevent->update($event);
+        $calendarevent->update($event, false);
     } else if ($chat->schedule > 0) {
         // The chat is scheduled and the event should be published.
         $event->courseid    = $chat->course;
@@ -512,7 +512,7 @@ function chat_prepare_update_events($chat, $cm = null) {
         $event->eventtype   = CHAT_EVENT_TYPE_CHATTIME;
         $event->timeduration = 0;
         $event->visible = $cm->visible;
-        calendar_event::create($event);
+        calendar_event::create($event, false);
     }
 }
 
@@ -1272,16 +1272,6 @@ function chat_reset_userdata($data) {
 }
 
 /**
- * Returns all other caps used in module
- *
- * @return array
- */
-function chat_get_extra_capabilities() {
-    return array('moodle/site:accessallgroups', 'moodle/site:viewfullnames');
-}
-
-
-/**
  * @param string $feature FEATURE_xx constant for requested feature
  * @return mixed True if module supports feature, null if doesn't know
  */
@@ -1459,16 +1449,31 @@ function chat_view($chat, $course, $cm, $context) {
  *
  * @param calendar_event $event
  * @param \core_calendar\action_factory $factory
+ * @param int $userid User id to use for all capability checks, etc. Set to 0 for current user (default).
  * @return \core_calendar\local\event\entities\action_interface|null
  */
 function mod_chat_core_calendar_provide_event_action(calendar_event $event,
-                                                     \core_calendar\action_factory $factory) {
-    global $DB;
+                                                     \core_calendar\action_factory $factory,
+                                                     int $userid = 0) {
+    global $USER, $DB;
 
-    $cm = get_fast_modinfo($event->courseid)->instances['chat'][$event->instance];
+    if ($userid) {
+        $user = core_user::get_user($userid, 'id, timezone');
+    } else {
+        $user = $USER;
+    }
+
+    $cm = get_fast_modinfo($event->courseid, $user->id)->instances['chat'][$event->instance];
+
+    if (!$cm->uservisible) {
+        // The module is not visible to the user for any reason.
+        return null;
+    }
+
     $chattime = $DB->get_field('chat', 'chattime', array('id' => $event->instance));
-    $chattimemidnight = usergetmidnight($chattime);
-    $todaymidnight = usergetmidnight(time());
+    $usertimezone = core_date::get_user_timezone($user);
+    $chattimemidnight = usergetmidnight($chattime, $usertimezone);
+    $todaymidnight = usergetmidnight(time(), $usertimezone);
 
     if ($chattime < $todaymidnight) {
         // The chat is before today. Do not show at all.

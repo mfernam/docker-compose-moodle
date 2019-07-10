@@ -2496,7 +2496,7 @@ class core_renderer extends renderer_base {
         global $CFG, $DB;
 
         $user = $userpicture->user;
-        $canviewfullnames = has_capability('moodle/site:viewfullnames', context_system::instance());
+        $canviewfullnames = has_capability('moodle/site:viewfullnames', $this->page->context);
 
         if ($userpicture->alttext) {
             if (!empty($user->imagealt)) {
@@ -2524,9 +2524,16 @@ class core_renderer extends renderer_base {
 
         $src = $userpicture->get_url($this->page, $this);
 
-        $attributes = array('src'=>$src, 'alt'=>$alt, 'title'=>$alt, 'class'=>$class, 'width'=>$size, 'height'=>$size);
+        $attributes = array('src' => $src, 'class' => $class, 'width' => $size, 'height' => $size);
         if (!$userpicture->visibletoscreenreaders) {
             $attributes['role'] = 'presentation';
+            $alt = '';
+            $attributes['aria-hidden'] = 'true';
+        }
+
+        if (!empty($alt)) {
+            $attributes['alt'] = $alt;
+            $attributes['title'] = $alt;
         }
 
         // get the image html output fisrt
@@ -3418,6 +3425,7 @@ EOD;
         $am->set_menu_trigger(
             $returnstr
         );
+        $am->set_action_label(get_string('usermenu'));
         $am->set_alignment(action_menu::TR, action_menu::BR);
         $am->set_nowrap_on_items();
         if ($withlinks) {
@@ -3439,7 +3447,7 @@ EOD;
                         // Process this as a link item.
                         $pix = null;
                         if (isset($value->pix) && !empty($value->pix)) {
-                            $pix = new pix_icon($value->pix, $value->title, null, array('class' => 'iconsmall'));
+                            $pix = new pix_icon($value->pix, '', null, array('class' => 'iconsmall'));
                         } else if (isset($value->imgsrc) && !empty($value->imgsrc)) {
                             $value->title = html_writer::img(
                                 $value->imgsrc,
@@ -3530,6 +3538,9 @@ EOD;
             }
             if ($item->hidden) {
                 $attributes['class'] = 'dimmed_text';
+            }
+            if ($item->is_last()) {
+                $attributes['aria-current'] = 'page';
             }
             $content = html_writer::tag('span', $content, array('itemprop' => 'title'));
             $content = html_writer::link($item->action, $content, $attributes);
@@ -4447,6 +4458,22 @@ EOD;
                     } else {
                         $text = $element->getText();
                     }
+                }
+
+                // Generate the form element wrapper ids and names to pass to the template.
+                // This differs between group and non-group elements.
+                if ($element->getType() === 'group') {
+                    // Group element.
+                    // The id will be something like 'fgroup_id_NAME'. E.g. fgroup_id_mygroup.
+                    $elementcontext['wrapperid'] = $elementcontext['id'];
+
+                    // Ensure group elements pass through the group name as the element name so the id_error_{{element.name}} is
+                    // properly set in the template.
+                    $elementcontext['name'] = $elementcontext['groupname'];
+                } else {
+                    // Non grouped element.
+                    // Creates an id like 'fitem_id_NAME'. E.g. fitem_id_mytextelement.
+                    $elementcontext['wrapperid'] = 'fitem_' . $elementcontext['id'];
                 }
 
                 $context = array(

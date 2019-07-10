@@ -687,6 +687,15 @@ class navigation_node implements renderable {
     }
 
     /**
+     * Used to easily determine if this link in the breadcrumbs is hidden.
+     *
+     * @return boolean
+     */
+    public function is_hidden() {
+        return $this->hidden;
+    }
+
+    /**
      * Gets the CSS class to add to this node to describe its type
      *
      * @return string
@@ -1209,7 +1218,7 @@ class global_navigation extends navigation_node {
             // The home element should be my moodle because the root element is the site
             if (isloggedin() && !isguestuser()) {  // Makes no sense if you aren't logged in
                 $this->rootnodes['home'] = $this->add(get_string('myhome'), new moodle_url('/my/'),
-                    self::TYPE_SETTING, null, 'home', new pix_icon('i/dashboard', ''));
+                    self::TYPE_SETTING, null, 'myhome', new pix_icon('i/dashboard', ''));
                 $this->rootnodes['home']->showinflatnavigation = true;
             }
         } else {
@@ -1417,7 +1426,7 @@ class global_navigation extends navigation_node {
         foreach ($this->rootnodes as $node) {
             // Dont remove the home node
             /** @var navigation_node $node */
-            if ($node->key !== 'home' && !$node->has_children() && !$node->isactive) {
+            if (!in_array($node->key, ['home', 'myhome']) && !$node->has_children() && !$node->isactive) {
                 $node->remove();
             }
         }

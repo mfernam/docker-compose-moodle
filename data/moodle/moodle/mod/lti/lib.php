@@ -49,15 +49,6 @@
 defined('MOODLE_INTERNAL') || die;
 
 /**
- * Returns all other caps used in module.
- *
- * @return array
- */
-function lti_get_extra_capabilities() {
-    return array('moodle/site:accessallgroups');
-}
-
-/**
  * List of features supported in URL module
  * @param string $feature FEATURE_xx constant for requested feature
  * @return mixed True if module supports feature, false if not, null if doesn't know
@@ -661,15 +652,28 @@ function mod_lti_get_fontawesome_icon_map() {
  *
  * @param calendar_event $event
  * @param \core_calendar\action_factory $factory
+ * @param int $userid User id to use for all capability checks, etc. Set to 0 for current user (default).
  * @return \core_calendar\local\event\entities\action_interface|null
  */
 function mod_lti_core_calendar_provide_event_action(calendar_event $event,
-                                                      \core_calendar\action_factory $factory) {
-    $cm = get_fast_modinfo($event->courseid)->instances['lti'][$event->instance];
+                                                      \core_calendar\action_factory $factory,
+                                                      int $userid = 0) {
+    global $USER;
+
+    if (empty($userid)) {
+        $userid = $USER->id;
+    }
+
+    $cm = get_fast_modinfo($event->courseid, $userid)->instances['lti'][$event->instance];
+
+    if (!$cm->uservisible) {
+        // The module is not visible to the user for any reason.
+        return null;
+    }
 
     $completion = new \completion_info($cm->get_course());
 
-    $completiondata = $completion->get_data($cm, false);
+    $completiondata = $completion->get_data($cm, false, $userid);
 
     if ($completiondata->completionstate != COMPLETION_INCOMPLETE) {
         return null;

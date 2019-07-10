@@ -155,7 +155,6 @@ class core_user_external extends external_api {
         $transaction = $DB->start_delegated_transaction();
 
         $userids = array();
-        $createpassword = false;
         foreach ($params['users'] as $user) {
             // Make sure that the username, firstname and lastname are not blank.
             foreach (array('username', 'firstname', 'lastname') as $fieldname) {
@@ -188,7 +187,8 @@ class core_user_external extends external_api {
             }
 
             // Make sure we have a password or have to create one.
-            if (empty($user['password']) && empty($user['createpassword'])) {
+            $authplugin = get_auth_plugin($user['auth']);
+            if ($authplugin->is_internal() && empty($user['password']) && empty($user['createpassword'])) {
                 throw new invalid_parameter_exception('Invalid password: you must provide a password, or set createpassword.');
             }
 
@@ -199,19 +199,31 @@ class core_user_external extends external_api {
             // Make sure we validate current user info as handled by current GUI. See user/editadvanced_form.php func validation().
             if (!validate_email($user['email'])) {
                 throw new invalid_parameter_exception('Email address is invalid: '.$user['email']);
-            } else if (empty($CFG->allowaccountssameemail) &&
-                    $DB->record_exists('user', array('email' => $user['email'], 'mnethostid' => $user['mnethostid']))) {
-                throw new invalid_parameter_exception('Email address already exists: '.$user['email']);
+            } else if (empty($CFG->allowaccountssameemail)) {
+                // Make a case-insensitive query for the given email address.
+                $select = $DB->sql_equal('email', ':email', false) . ' AND mnethostid = :mnethostid';
+                $params = array(
+                    'email' => $user['email'],
+                    'mnethostid' => $user['mnethostid']
+                );
+                // If there are other user(s) that already have the same email, throw an error.
+                if ($DB->record_exists_select('user', $select, $params)) {
+                    throw new invalid_parameter_exception('Email address already exists: '.$user['email']);
+                }
             }
             // End of user info validation.
 
             $createpassword = !empty($user['createpassword']);
             unset($user['createpassword']);
-            if ($createpassword) {
-                $user['password'] = '';
-                $updatepassword = false;
+            $updatepassword = false;
+            if ($authplugin->is_internal()) {
+                if ($createpassword) {
+                    $user['password'] = '';
+                } else {
+                    $updatepassword = true;
+                }
             } else {
-                $updatepassword = true;
+                $user['password'] = AUTH_PASSWORD_NOT_CACHED;
             }
 
             // Create the user data now!
@@ -559,9 +571,18 @@ class core_user_external extends external_api {
             if (isset($user['email']) && $user['email'] !== $existinguser->email) {
                 if (!validate_email($user['email'])) {
                     continue;
-                } else if (empty($CFG->allowaccountssameemail) &&
-                        $DB->record_exists('user', array('email' => $user['email'], 'mnethostid' => $CFG->mnet_localhost_id))) {
-                    continue;
+                } else if (empty($CFG->allowaccountssameemail)) {
+                    // Make a case-insensitive query for the given email address and make sure to exclude the user being updated.
+                    $select = $DB->sql_equal('email', ':email', false) . ' AND mnethostid = :mnethostid AND id <> :userid';
+                    $params = array(
+                        'email' => $user['email'],
+                        'mnethostid' => $CFG->mnet_localhost_id,
+                        'userid' => $user['id']
+                    );
+                    // Skip if there are other user(s) that already have the same email.
+                    if ($DB->record_exists_select('user', $select, $params)) {
+                        continue;
+                    }
                 }
             }
 

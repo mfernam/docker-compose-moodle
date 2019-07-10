@@ -751,4 +751,97 @@ class core_enrollib_testcase extends advanced_testcase {
         $this->assertCount(2, enrol_get_course_users($course1->id, false));
         $this->assertCount(1, enrol_get_course_users($course1->id, true));
     }
+
+    /**
+     * Test count of enrolled users
+     *
+     * @return void
+     */
+    public function test_count_enrolled_users() {
+        global $DB;
+
+        $this->resetAfterTest(true);
+
+        $course = $this->getDataGenerator()->create_course();
+        $context = \context_course::instance($course->id);
+
+        $user1 = $this->getDataGenerator()->create_user();
+        $user2 = $this->getDataGenerator()->create_user();
+
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+
+        // Add each user to the manual enrolment instance.
+        $manual = enrol_get_plugin('manual');
+
+        $manualinstance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
+
+        $manual->enrol_user($manualinstance, $user1->id, $studentrole->id);
+        $manual->enrol_user($manualinstance, $user2->id, $studentrole->id);
+
+        $this->assertEquals(2, count_enrolled_users($context));
+
+        // Create a self enrolment instance, enrol first user only.
+        $self = enrol_get_plugin('self');
+
+        $selfid = $self->add_instance($course,
+            ['status' => ENROL_INSTANCE_ENABLED, 'name' => 'Self', 'customint6' => 1, 'roleid' => $studentrole->id]);
+        $selfinstance = $DB->get_record('enrol', ['id' => $selfid], '*', MUST_EXIST);
+
+        $self->enrol_user($selfinstance, $user1->id, $studentrole->id);
+
+        // There are still only two distinct users.
+        $this->assertEquals(2, count_enrolled_users($context));
+    }
+
+    /**
+     * Test enrol_get_course_users_roles function.
+     *
+     * @return void
+     */
+    public function test_enrol_get_course_users_roles() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $user1 = $this->getDataGenerator()->create_user();
+        $user2 = $this->getDataGenerator()->create_user();
+        $course = $this->getDataGenerator()->create_course();
+        $context = context_course::instance($course->id);
+
+        $roles = array();
+        $roles['student'] = $DB->get_field('role', 'id', array('shortname' => 'student'), MUST_EXIST);
+        $roles['teacher'] = $DB->get_field('role', 'id', array('shortname' => 'teacher'), MUST_EXIST);
+
+        $manual = enrol_get_plugin('manual');
+        $this->assertNotEmpty($manual);
+
+        $enrol = $DB->get_record('enrol', array('courseid' => $course->id, 'enrol' => 'manual'), '*', MUST_EXIST);
+
+        // Test without enrolments.
+        $this->assertEmpty(enrol_get_course_users_roles($course->id));
+
+        // Test with 1 user, 1 role.
+        $manual->enrol_user($enrol, $user1->id, $roles['student']);
+        $return = enrol_get_course_users_roles($course->id);
+        $this->assertArrayHasKey($user1->id, $return);
+        $this->assertArrayHasKey($roles['student'], $return[$user1->id]);
+        $this->assertArrayNotHasKey($roles['teacher'], $return[$user1->id]);
+
+        // Test with 1 user, 2 role.
+        $manual->enrol_user($enrol, $user1->id, $roles['teacher']);
+        $return = enrol_get_course_users_roles($course->id);
+        $this->assertArrayHasKey($user1->id, $return);
+        $this->assertArrayHasKey($roles['student'], $return[$user1->id]);
+        $this->assertArrayHasKey($roles['teacher'], $return[$user1->id]);
+
+        // Test with another user, 1 role.
+        $manual->enrol_user($enrol, $user2->id, $roles['student']);
+        $return = enrol_get_course_users_roles($course->id);
+        $this->assertArrayHasKey($user1->id, $return);
+        $this->assertArrayHasKey($roles['student'], $return[$user1->id]);
+        $this->assertArrayHasKey($roles['teacher'], $return[$user1->id]);
+        $this->assertArrayHasKey($user2->id, $return);
+        $this->assertArrayHasKey($roles['student'], $return[$user2->id]);
+        $this->assertArrayNotHasKey($roles['teacher'], $return[$user2->id]);
+    }
 }

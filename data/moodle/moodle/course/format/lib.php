@@ -288,6 +288,18 @@ abstract class format_base {
     }
 
     /**
+     * Method used to get the maximum number of sections for this course format.
+     * @return int
+     */
+    public function get_max_sections() {
+        $maxsections = get_config('moodlecourse', 'maxsections');
+        if (!isset($maxsections) || !is_numeric($maxsections)) {
+            $maxsections = 52;
+        }
+        return $maxsections;
+    }
+
+    /**
      * Returns true if the course has a front page.
      *
      * This function is called to determine if the course has a view page, whether or not
@@ -1061,6 +1073,11 @@ abstract class format_base {
         $DB->delete_records('course_format_options', array('sectionid' => $section->id));
         $DB->delete_records('course_sections', array('id' => $section->id));
         rebuild_course_cache($course->id, true);
+
+        // Delete section summary files.
+        $context = \context_course::instance($course->id);
+        $fs = get_file_storage();
+        $fs->delete_area_files($context->id, 'course', 'section', $section->id);
 
         // Descrease 'numsections' if needed.
         if ($decreasenumsections) {

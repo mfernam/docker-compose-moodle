@@ -45,15 +45,6 @@ define('FEEDBACK_EVENT_TYPE_OPEN', 'open');
 define('FEEDBACK_EVENT_TYPE_CLOSE', 'close');
 
 /**
- * Returns all other caps used in module.
- *
- * @return array
- */
-function feedback_get_extra_capabilities() {
-    return array('moodle/site:accessallgroups');
-}
-
-/**
  * @uses FEATURE_GROUPS
  * @uses FEATURE_GROUPINGS
  * @uses FEATURE_MOD_INTRO
@@ -828,7 +819,7 @@ function feedback_set_events($feedback) {
             // Calendar event exists so update it.
             $event->id = $eventid;
             $calendarevent = calendar_event::load($event->id);
-            $calendarevent->update($event);
+            $calendarevent->update($event, false);
         } else {
             // Event doesn't exist so create one.
             $event->courseid     = $feedback->course;
@@ -837,7 +828,7 @@ function feedback_set_events($feedback) {
             $event->modulename   = 'feedback';
             $event->instance     = $feedback->id;
             $event->eventtype    = FEEDBACK_EVENT_TYPE_OPEN;
-            calendar_event::create($event);
+            calendar_event::create($event, false);
         }
     } else if ($eventid) {
         // Calendar event is on longer needed.
@@ -863,7 +854,7 @@ function feedback_set_events($feedback) {
             // Calendar event exists so update it.
             $event->id = $eventid;
             $calendarevent = calendar_event::load($event->id);
-            $calendarevent->update($event);
+            $calendarevent->update($event, false);
         } else {
             // Event doesn't exist so create one.
             $event->courseid     = $feedback->course;
@@ -871,7 +862,7 @@ function feedback_set_events($feedback) {
             $event->userid       = 0;
             $event->modulename   = 'feedback';
             $event->instance     = $feedback->id;
-            calendar_event::create($event);
+            calendar_event::create($event, false);
         }
     } else if ($eventid) {
         // Calendar event is on longer needed.
@@ -3013,7 +3004,7 @@ function feedback_send_email($cm, $feedback, $course, $user, $completed = null) 
         return;
     }
 
-    if (is_int($user)) {
+    if (!is_object($user)) {
         $user = $DB->get_record('user', array('id' => $user));
     }
 
@@ -3448,13 +3439,27 @@ function feedback_check_updates_since(cm_info $cm, $from, $filter = array()) {
  *
  * @param calendar_event $event
  * @param \core_calendar\action_factory $factory
+ * @param int $userid User id to use for all capability checks, etc. Set to 0 for current user (default).
  * @return \core_calendar\local\event\entities\action_interface|null
  */
 function mod_feedback_core_calendar_provide_event_action(calendar_event $event,
-                                                         \core_calendar\action_factory $factory) {
+                                                         \core_calendar\action_factory $factory,
+                                                         int $userid = 0) {
 
-    $cm = get_fast_modinfo($event->courseid)->instances['feedback'][$event->instance];
-    $feedbackcompletion = new mod_feedback_completion(null, $cm, 0);
+    global $USER;
+
+    if (empty($userid)) {
+        $userid = $USER->id;
+    }
+
+    $cm = get_fast_modinfo($event->courseid, $userid)->instances['feedback'][$event->instance];
+
+    if (!$cm->uservisible) {
+        // The module is not visible to the user for any reason.
+        return null;
+    }
+
+    $feedbackcompletion = new mod_feedback_completion(null, $cm, 0, false, null, null, $userid);
 
     if (!empty($cm->customdata['timeclose']) && $cm->customdata['timeclose'] < time()) {
         // Feedback is already closed, do not display it even if it was never submitted.
@@ -3469,7 +3474,7 @@ function mod_feedback_core_calendar_provide_event_action(calendar_event $event,
     // The feedback is actionable if it does not have timeopen or timeopen is in the past.
     $actionable = $feedbackcompletion->is_open();
 
-    if ($actionable && $feedbackcompletion->is_already_submitted()) {
+    if ($actionable && $feedbackcompletion->is_already_submitted(false)) {
         // There is no need to display anything if the user has already submitted the feedback.
         return null;
     }

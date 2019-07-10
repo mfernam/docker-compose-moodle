@@ -330,6 +330,7 @@ function get_role_definitions_uncached(array $roleids) {
     $sql = "SELECT ctx.path, rc.roleid, rc.capability, rc.permission
               FROM {role_capabilities} rc
               JOIN {context} ctx ON rc.contextid = ctx.id
+              JOIN {capabilities} cap ON rc.capability = cap.name
              WHERE rc.roleid $sql";
     $rs = $DB->get_recordset_sql($sql, $params);
 
@@ -1152,7 +1153,17 @@ function is_safe_capability($capability) {
  */
 function get_local_override($roleid, $contextid, $capability) {
     global $DB;
-    return $DB->get_record('role_capabilities', array('roleid'=>$roleid, 'capability'=>$capability, 'contextid'=>$contextid));
+
+    return $DB->get_record_sql("
+        SELECT rc.*
+          FROM {role_capabilities} rc
+          JOIN {capability} cap ON rc.capability = cap.name
+         WHERE rc.roleid = :roleid AND rc.capability = :capability AND rc.contextid = :contextid", [
+            'roleid' => $roleid,
+            'contextid' => $contextid,
+            'capability' => $capability,
+
+        ]);
 }
 
 /**
@@ -1298,6 +1309,11 @@ function assign_capability($capability, $permission, $roleid, $contextid, $overw
         $context = context::instance_by_id($contextid);
     }
 
+    // Capability must exist.
+    if (!$capinfo = get_capability_info($capability)) {
+        throw new coding_exception("Capability '{$capability}' was not found! This has to be fixed in code.");
+    }
+
     if (empty($permission) || $permission == CAP_INHERIT) { // if permission is not set
         unassign_capability($capability, $roleid, $context->id);
         return true;
@@ -1344,6 +1360,11 @@ function assign_capability($capability, $permission, $roleid, $contextid, $overw
  */
 function unassign_capability($capability, $roleid, $contextid = null) {
     global $DB;
+
+    // Capability must exist.
+    if (!$capinfo = get_capability_info($capability)) {
+        throw new coding_exception("Capability '{$capability}' was not found! This has to be fixed in code.");
+    }
 
     if (!empty($contextid)) {
         if ($contextid instanceof context) {
@@ -1399,6 +1420,7 @@ function get_roles_with_capability($capability, $permission = null, $context = n
               FROM {role} r
              WHERE r.id IN (SELECT rc.roleid
                               FROM {role_capabilities} rc
+                              JOIN {capabilities} cap ON rc.capability = cap.name
                              WHERE rc.capability = :capname
                                    $contextsql
                                    $permissionsql)";
@@ -2195,6 +2217,9 @@ function update_capabilities($component = 'moodle') {
 
         $DB->insert_record('capabilities', $capability, false);
 
+        // Flush the cached, as we have changed DB.
+        cache::make('core', 'capabilities')->delete('core_capabilities');
+
         if (isset($capdef['clonepermissionsfrom']) && in_array($capdef['clonepermissionsfrom'], $existingcaps)){
             if ($rolecapabilities = $DB->get_records('role_capabilities', array('capability'=>$capdef['clonepermissionsfrom']))){
                 foreach ($rolecapabilities as $rolecapability){
@@ -2248,9 +2273,6 @@ function capabilities_cleanup($component, $newcapdef = null) {
             if (empty($newcapdef) ||
                         array_key_exists($cachedcap->name, $newcapdef) === false) {
 
-                // Remove from capabilities cache.
-                $DB->delete_records('capabilities', array('name'=>$cachedcap->name));
-                $removedcount++;
                 // Delete from roles.
                 if ($roles = get_roles_with_capability($cachedcap->name)) {
                     foreach($roles as $role) {
@@ -2259,6 +2281,13 @@ function capabilities_cleanup($component, $newcapdef = null) {
                         }
                     }
                 }
+
+                // Remove from role_capabilities for any old ones.
+                $DB->delete_records('role_capabilities', array('capability' => $cachedcap->name));
+
+                // Remove from capabilities cache.
+                $DB->delete_records('capabilities', array('name' => $cachedcap->name));
+                $removedcount++;
             } // End if.
         }
     }
@@ -2323,10 +2352,12 @@ function role_context_capabilities($roleid, context $context, $cap = '') {
     }
 
     $sql = "SELECT rc.*
-              FROM {role_capabilities} rc, {context} c
+              FROM {role_capabilities} rc
+              JOIN {context} c ON rc.contextid = c.id
+              JOIN {capabilities} cap ON rc.capability = cap.name
              WHERE rc.contextid in $contexts
                    AND rc.roleid = ?
-                   AND rc.contextid = c.id $search
+                   $search
           ORDER BY c.contextlevel DESC, rc.capability DESC";
 
     $capabilities = array();
@@ -2966,7 +2997,7 @@ function get_assignable_roles(context $context, $rolenamedisplay = ROLENAME_ALIA
     $extrafields = '';
 
     if ($withusercounts) {
-        $extrafields = ', (SELECT count(u.id)
+        $extrafields = ', (SELECT COUNT(DISTINCT u.id)
                              FROM {role_assignments} cra JOIN {user} u ON cra.userid = u.id
                             WHERE cra.roleid = r.id AND cra.contextid = :conid AND u.deleted = 0
                           ) AS usercount';
@@ -3062,6 +3093,7 @@ function get_switchable_roles(context $context) {
         SELECT r.id, r.name, r.shortname, rn.name AS coursealias
           FROM (SELECT DISTINCT rc.roleid
                   FROM {role_capabilities} rc
+
                   $extrajoins
                   $extrawhere) idlist
           JOIN {role} r ON r.id = idlist.roleid
@@ -3376,6 +3408,7 @@ function get_users_by_capability(context $context, $capability, $fields = '', $s
     $params = array_merge($params, $params2);
     $sql = "SELECT rc.id, rc.roleid, rc.permission, rc.capability, ctx.path
               FROM {role_capabilities} rc
+              JOIN {capabilities} cap ON rc.capability = cap.name
               JOIN {context} ctx on rc.contextid = ctx.id
              WHERE rc.contextid $incontexts AND rc.capability $incaps";
 
@@ -3496,19 +3529,21 @@ function get_users_by_capability(context $context, $capability, $fields = '', $s
     if ($groups) {
         $groups = (array)$groups;
         list($grouptest, $grpparams) = $DB->get_in_or_equal($groups, SQL_PARAMS_NAMED, 'grp');
-        $grouptest = "u.id IN (SELECT userid FROM {groups_members} gm WHERE gm.groupid $grouptest)";
+        $joins[] = "LEFT OUTER JOIN (SELECT DISTINCT userid
+                                       FROM {groups_members}
+                                      WHERE groupid $grouptest
+                                    ) gm ON gm.userid = u.id";
+
         $params = array_merge($params, $grpparams);
 
+        $grouptest = 'gm.userid IS NOT NULL';
         if ($useviewallgroups) {
             $viewallgroupsusers = get_users_by_capability($context, 'moodle/site:accessallgroups', 'u.id, u.id', '', '', '', '', $exceptions);
             if (!empty($viewallgroupsusers)) {
-                $wherecond[] =  "($grouptest OR u.id IN (" . implode(',', array_keys($viewallgroupsusers)) . '))';
-            } else {
-                $wherecond[] =  "($grouptest)";
+                $grouptest .= ' OR u.id IN (' . implode(',', array_keys($viewallgroupsusers)) . ')';
             }
-        } else {
-            $wherecond[] =  "($grouptest)";
         }
+        $wherecond[] = "($grouptest)";
     }
 
     // User exceptions
@@ -4471,6 +4506,7 @@ function get_roles_with_cap_in_context($context, $capability) {
     $sql = "SELECT rc.id, rc.roleid, rc.permission, ctx.depth
               FROM {role_capabilities} rc
               JOIN {context} ctx ON ctx.id = rc.contextid
+              JOIN {capabilities} cap ON rc.capability = cap.name
              WHERE rc.capability = :cap AND ctx.id IN ($ctxids)
           ORDER BY rc.roleid ASC, ctx.depth DESC";
     $params = array('cap'=>$capability);
@@ -4590,6 +4626,7 @@ function prohibit_is_removable($roleid, context $context, $capability) {
     $sql = "SELECT ctx.id
               FROM {role_capabilities} rc
               JOIN {context} ctx ON ctx.id = rc.contextid
+              JOIN {capabilities} cap ON rc.capability = cap.name
              WHERE rc.roleid = :roleid AND rc.permission = :prohibit AND rc.capability = :cap AND ctx.id IN ($ctxids)
           ORDER BY ctx.depth DESC";
 
@@ -4633,6 +4670,7 @@ function role_change_permission($roleid, $context, $capname, $permission) {
     $sql = "SELECT ctx.id, rc.permission, ctx.depth
               FROM {role_capabilities} rc
               JOIN {context} ctx ON ctx.id = rc.contextid
+              JOIN {capabilities} cap ON rc.capability = cap.name
              WHERE rc.roleid = :roleid AND rc.capability = :cap AND ctx.id IN ($ctxids)
           ORDER BY ctx.depth DESC";
 
@@ -5334,6 +5372,9 @@ abstract class context extends stdClass implements IteratorAggregate {
             return array();
         }
 
+        // Preload the contexts to reduce DB calls.
+        context_helper::preload_contexts_by_id($contextids);
+
         $result = array();
         foreach ($contextids as $contextid) {
             $parent = context::instance_by_id($contextid, MUST_EXIST);
@@ -5709,6 +5750,34 @@ class context_helper extends context {
      public static function preload_from_record(stdClass $rec) {
          context::preload_from_record($rec);
      }
+
+    /**
+     * Preload a set of contexts using their contextid.
+     *
+     * @param   array $contextids
+     */
+    public static function preload_contexts_by_id(array $contextids) {
+        global $DB;
+
+        // Determine which contexts are not already cached.
+        $tofetch = [];
+        foreach ($contextids as $contextid) {
+            if (!self::cache_get_by_id($contextid)) {
+                $tofetch[] = $contextid;
+            }
+        }
+
+        if (count($tofetch) > 1) {
+            // There are at least two to fetch.
+            // There is no point only fetching a single context as this would be no more efficient than calling the existing code.
+            list($insql, $inparams) = $DB->get_in_or_equal($tofetch, SQL_PARAMS_NAMED);
+            $ctxs = $DB->get_records_select('context', "id {$insql}", $inparams, '',
+                    \context_helper::get_preload_record_columns_sql('{context}'));
+            foreach ($ctxs as $ctx) {
+                self::preload_from_record($ctx);
+            }
+        }
+    }
 
     /**
      * Preload all contexts instances from course.
@@ -6778,12 +6847,39 @@ class context_module extends context {
         if (!empty($extra)) {
             $extra = "OR name $extra";
         }
+
+        // Fetch the list of modules, and remove this one.
+        $components = \core_component::get_component_list();
+        $componentnames = $components['mod'];
+        unset($componentnames["mod_{$module->name}"]);
+        $componentnames = array_keys($componentnames);
+
+        // Exclude all other modules.
+        list($notcompsql, $notcompparams) = $DB->get_in_or_equal($componentnames, SQL_PARAMS_NAMED, 'notcomp', false);
+        $params = array_merge($params, $notcompparams);
+
+
+        // Exclude other component submodules.
+        $i = 0;
+        $ignorecomponents = [];
+        foreach ($componentnames as $mod) {
+            if ($subplugins = \core_component::get_subplugins($mod)) {
+                foreach (array_keys($subplugins) as $subplugintype) {
+                    $paramname = "notlike{$i}";
+                    $ignorecomponents[] = $DB->sql_like('component', ":{$paramname}", true, true, true);
+                    $params[$paramname] = "{$subplugintype}_%";
+                    $i++;
+                }
+            }
+        }
+        $notlikesql = "(" . implode(' AND ', $ignorecomponents) . ")";
+
         $sql = "SELECT *
                   FROM {capabilities}
                  WHERE (contextlevel = ".CONTEXT_MODULE."
-                       AND (component = :component OR component = 'moodle'))
+                   AND component {$notcompsql}
+                   AND {$notlikesql})
                        $extra";
-        $params['component'] = "mod_$module->name";
 
         return $DB->get_records_sql($sql.' '.$sort, $params);
     }
@@ -7287,6 +7383,7 @@ function get_with_capability_join(context $context, $capability, $useridcolumn) 
     $defs = array();
     $sql = "SELECT rc.id, rc.roleid, rc.permission, ctx.path
               FROM {role_capabilities} rc
+              JOIN {capabilities} cap ON rc.capability = cap.name
               JOIN {context} ctx on rc.contextid = ctx.id
              WHERE rc.contextid $incontexts AND rc.capability $incaps";
     $rcs = $DB->get_records_sql($sql, array_merge($cparams, $capsparams));

@@ -126,8 +126,9 @@ function user_create_user($user, $updatepassword = true, $triggerevent = true) {
         \core\event\user_created::create_from_userid($newuserid)->trigger();
     }
 
-    // Purge the associated caches.
-    cache_helper::purge_by_event('createduser');
+    // Purge the associated caches for the current user only.
+    $presignupcache = \cache::make('core', 'presignup');
+    $presignupcache->purge_current_user();
 
     return $newuserid;
 }
@@ -596,9 +597,6 @@ function user_get_user_details_courses($user) {
     global $USER;
     $userdetails = null;
 
-    // Get the courses that the user is enrolled in (only active).
-    $courses = enrol_get_users_courses($user->id, true);
-
     $systemprofile = false;
     if (can_view_user_details_cap($user) || ($user->id == $USER->id) || has_coursecontact_role($user->id)) {
         $systemprofile = true;
@@ -609,8 +607,10 @@ function user_get_user_details_courses($user) {
         $userdetails = user_get_user_details($user, null);
     } else {
         // Try through course profile.
+        // Get the courses that the user is enrolled in (only active).
+        $courses = enrol_get_users_courses($user->id, true);
         foreach ($courses as $course) {
-            if (can_view_user_details_cap($user, $course) || ($user->id == $USER->id) || has_coursecontact_role($user->id)) {
+            if (user_can_view_profile($user, $course)) {
                 $userdetails = user_get_user_details($user, $course);
             }
         }
@@ -1245,7 +1245,7 @@ function user_get_tagged_users($tag, $exclusivemode = false, $fromctx = 0, $ctx 
  * Returns the SQL used by the participants table.
  *
  * @param int $courseid The course id
- * @param int $groupid The groupid, 0 means all groups
+ * @param int $groupid The groupid, 0 means all groups and USERSWITHOUTGROUP no group
  * @param int $accesssince The time since last access, 0 means any time
  * @param int $roleid The role id, 0 means all roles
  * @param int $enrolid The enrolment id, 0 means all enrolment methods will be returned.
@@ -1416,7 +1416,7 @@ function user_get_participants_sql($courseid, $groupid = 0, $accesssince = 0, $r
  * Returns the total number of participants for a given course.
  *
  * @param int $courseid The course id
- * @param int $groupid The groupid, 0 means all groups
+ * @param int $groupid The groupid, 0 means all groups and USERSWITHOUTGROUP no group
  * @param int $accesssince The time since last access, 0 means any time
  * @param int $roleid The role id, 0 means all roles
  * @param int $enrolid The applied filter for the user enrolment ID.
@@ -1440,7 +1440,7 @@ function user_get_total_participants($courseid, $groupid = 0, $accesssince = 0, 
  * Returns the participants for a given course.
  *
  * @param int $courseid The course id
- * @param int $groupid The group id
+ * @param int $groupid The groupid, 0 means all groups and USERSWITHOUTGROUP no group
  * @param int $accesssince The time since last access
  * @param int $roleid The role id
  * @param int $enrolid The applied filter for the user enrolment ID.
@@ -1478,7 +1478,7 @@ function user_get_course_lastaccess_sql($accesssince = null, $tableprefix = 'ul'
     if ($accesssince == -1) { // Never.
         return $tableprefix . '.timeaccess = 0';
     } else {
-        return $tableprefix . '.timeaccess != 0 AND ul.timeaccess < ' . $accesssince;
+        return $tableprefix . '.timeaccess != 0 AND ' . $tableprefix . '.timeaccess < ' . $accesssince;
     }
 }
 
@@ -1497,7 +1497,7 @@ function user_get_user_lastaccess_sql($accesssince = null, $tableprefix = 'u') {
     if ($accesssince == -1) { // Never.
         return $tableprefix . '.lastaccess = 0';
     } else {
-        return $tableprefix . '.lastaccess != 0 AND u.lastaccess < ' . $accesssince;
+        return $tableprefix . '.lastaccess != 0 AND ' . $tableprefix . '.lastaccess < ' . $accesssince;
     }
 }
 
@@ -1513,4 +1513,39 @@ function core_user_inplace_editable($itemtype, $itemid, $newvalue) {
     if ($itemtype === 'user_roles') {
         return \core_user\output\user_roles_editable::update($itemid, $newvalue);
     }
+}
+
+/**
+ * Map an internal field name to a valid purpose from: "https://www.w3.org/TR/WCAG21/#input-purposes"
+ *
+ * @param integer $userid
+ * @param string $fieldname
+ * @return string $purpose (empty string if there is no mapping).
+ */
+function user_edit_map_field_purpose($userid, $fieldname) {
+    global $USER;
+
+    $currentuser = ($userid == $USER->id) && !\core\session\manager::is_loggedinas();
+    // These are the fields considered valid to map and auto fill from a browser.
+    // We do not include fields that are in a collapsed section by default because
+    // the browser could auto-fill the field and cause a new value to be saved when
+    // that field was never visible.
+    $validmappings = array(
+        'username' => 'username',
+        'password' => 'current-password',
+        'firstname' => 'given-name',
+        'lastname' => 'family-name',
+        'middlename' => 'additional-name',
+        'email' => 'email',
+        'country' => 'country',
+        'lang' => 'language'
+    );
+
+    $purpose = '';
+    // Only set a purpose when editing your own user details.
+    if ($currentuser && isset($validmappings[$fieldname])) {
+        $purpose = ' autocomplete="' . $validmappings[$fieldname] . '" ';
+    }
+
+    return $purpose;
 }

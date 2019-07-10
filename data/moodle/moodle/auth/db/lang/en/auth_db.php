@@ -33,7 +33,7 @@ $string['auth_dbextencodinghelp'] = 'Encoding used in external database';
 $string['auth_dbextrafields'] = 'These fields are optional.  You can choose to pre-fill some Moodle user fields with information from the <b>external database fields</b> that you specify here. <p>If you leave these blank, then defaults will be used.</p><p>In either case, the user will be able to edit all of these fields after they log in.</p>';
 $string['auth_dbfieldpass'] = 'Name of the field containing passwords';
 $string['auth_dbfieldpass_key'] = 'Password field';
-$string['auth_dbfielduser'] = 'Name of the field containing usernames';
+$string['auth_dbfielduser'] = 'Name of the field containing usernames. This field must be a varchar data type.';
 $string['auth_dbfielduser_key'] = 'Username field';
 $string['auth_dbhost'] = 'The computer hosting the database server. Use a system DSN entry if using ODBC. Use a PDO DSN entry if using PDO.';
 $string['auth_dbhost_key'] = 'Host';
@@ -59,7 +59,7 @@ $string['auth_dbsybasequotinghelp'] = 'Sybase style single quote escaping - need
 $string['auth_dbsyncuserstask'] = 'Synchronise users task';
 $string['auth_dbtable'] = 'Name of the table in the database';
 $string['auth_dbtable_key'] = 'Table';
-$string['auth_dbtype'] = 'The database type (See the <a href="http://phplens.com/adodb/supported.databases.html" target="_blank">ADOdb documentation</a> for details)';
+$string['auth_dbtype'] = 'The database type (see the documentation <a href="http://adodb.org/dokuwiki/doku.php" target="_blank">ADOdb - Database Abstraction Layer for PHP</a> for details).';
 $string['auth_dbtype_key'] = 'Database';
 $string['auth_dbupdateusers'] = 'Update users';
 $string['auth_dbupdateusers_description'] = 'As well as inserting new users, update existing users.';

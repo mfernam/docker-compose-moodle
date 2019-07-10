@@ -262,12 +262,20 @@ function glossary_user_outline($course, $user, $mod, $glossary) {
         $result->time = $lastentry->timemodified;
 
         if ($grade) {
-            $result->info .= ', ' . get_string('grade') . ': ' . $grade->str_long_grade;
+            if (!$grade->hidden || has_capability('moodle/grade:viewhidden', context_course::instance($course->id))) {
+                $result->info .= ', ' . get_string('grade') . ': ' . $grade->str_long_grade;
+            } else {
+                $result->info = get_string('grade') . ': ' . get_string('hidden', 'grades');
+            }
         }
         return $result;
     } else if ($grade) {
         $result = new stdClass();
-        $result->info = get_string('grade') . ': ' . $grade->str_long_grade;
+        if (!$grade->hidden || has_capability('moodle/grade:viewhidden', context_course::instance($course->id))) {
+            $result->info = get_string('grade') . ': ' . $grade->str_long_grade;
+        } else {
+            $result->info = get_string('grade') . ': ' . get_string('hidden', 'grades');
+        }
 
         //datesubmitted == time created. dategraded == time modified or time overridden
         //if grade was last modified by the user themselves use date graded. Otherwise use date submitted
@@ -319,9 +327,13 @@ function glossary_user_complete($course, $user, $mod, $glossary) {
     $grades = grade_get_grades($course->id, 'mod', 'glossary', $glossary->id, $user->id);
     if (!empty($grades->items[0]->grades)) {
         $grade = reset($grades->items[0]->grades);
-        echo $OUTPUT->container(get_string('grade').': '.$grade->str_long_grade);
-        if ($grade->str_feedback) {
-            echo $OUTPUT->container(get_string('feedback').': '.$grade->str_feedback);
+        if (!$grade->hidden || has_capability('moodle/grade:viewhidden', context_course::instance($course->id))) {
+            echo $OUTPUT->container(get_string('grade').': '.$grade->str_long_grade);
+            if ($grade->str_feedback) {
+                echo $OUTPUT->container(get_string('feedback').': '.$grade->str_feedback);
+            }
+        } else {
+            echo $OUTPUT->container(get_string('grade') . ': ' . get_string('hidden', 'grades'));
         }
     }
 
@@ -1007,7 +1019,7 @@ function glossary_get_entries($glossaryid, $entrylist, $pivot = "") {
  * @return array
  */
 function glossary_get_entries_search($concept, $courseid) {
-    global $CFG, $DB;
+    global $DB;
 
     //Check if the user is an admin
     $bypassadmin = 1; //This means NO (by default)
@@ -1024,6 +1036,7 @@ function glossary_get_entries_search($concept, $courseid) {
     $conceptlower = core_text::strtolower(trim($concept));
 
     $params = array('courseid1'=>$courseid, 'courseid2'=>$courseid, 'conceptlower'=>$conceptlower, 'concept'=>$concept);
+    $sensitiveconceptsql = $DB->sql_equal('concept', ':concept');
 
     return $DB->get_records_sql("SELECT e.*, g.name as glossaryname, cm.id as cmid, cm.course as courseid
                                    FROM {glossary_entries} e, {glossary} g,
@@ -1034,8 +1047,8 @@ function glossary_get_entries_search($concept, $courseid) {
                                             (cm.course = :courseid1 AND cm.visible = $bypassteacher)) AND
                                         g.id = cm.instance AND
                                         e.glossaryid = g.id  AND
-                                        ( (e.casesensitive != 0 AND LOWER(concept) = :conceptlower) OR
-                                          (e.casesensitive = 0 and concept = :concept)) AND
+                                        ( (e.casesensitive != 1 AND LOWER(concept) = :conceptlower) OR
+                                          (e.casesensitive = 1 and $sensitiveconceptsql)) AND
                                         (g.course = :courseid2 OR g.globalglossary = 1) AND
                                          e.usedynalink != 0 AND
                                          g.usedynalink != 0", $params);
@@ -2740,7 +2753,7 @@ function glossary_get_paging_bar($totalcount, $page, $perpage, $baseurl, $maxpag
         if ($showspecial) {
             $code .= '<br />';
             if ($specialselected) {
-                $code .= "<b>$specialtext</b>";
+                $code .= "$separator<b>$specialtext</b>";
             } else {
                 $code .= "$separator<a href=\"{$baseurl}page=$specialvalue\">$specialtext</a>";
             }
@@ -3073,7 +3086,8 @@ function glossary_reset_userdata($data) {
  * @return array
  */
 function glossary_get_extra_capabilities() {
-    return array('moodle/site:accessallgroups', 'moodle/site:viewfullnames', 'moodle/site:trustcontent', 'moodle/rating:view', 'moodle/rating:viewany', 'moodle/rating:viewall', 'moodle/rating:rate', 'moodle/comment:view', 'moodle/comment:post', 'moodle/comment:delete');
+    return ['moodle/rating:view', 'moodle/rating:viewany', 'moodle/rating:viewall', 'moodle/rating:rate',
+            'moodle/comment:view', 'moodle/comment:post', 'moodle/comment:delete'];
 }
 
 /**
@@ -4226,15 +4240,28 @@ function mod_glossary_get_fontawesome_icon_map() {
  *
  * @param calendar_event $event
  * @param \core_calendar\action_factory $factory
+ * @param int $userid User id to use for all capability checks, etc. Set to 0 for current user (default).
  * @return \core_calendar\local\event\entities\action_interface|null
  */
 function mod_glossary_core_calendar_provide_event_action(calendar_event $event,
-                                                      \core_calendar\action_factory $factory) {
-    $cm = get_fast_modinfo($event->courseid)->instances['glossary'][$event->instance];
+                                                         \core_calendar\action_factory $factory,
+                                                         int $userid = 0) {
+    global $USER;
+
+    if (!$userid) {
+        $userid = $USER->id;
+    }
+
+    $cm = get_fast_modinfo($event->courseid, $userid)->instances['glossary'][$event->instance];
+
+    if (!$cm->uservisible) {
+        // The module is not visible to the user for any reason.
+        return null;
+    }
 
     $completion = new \completion_info($cm->get_course());
 
-    $completiondata = $completion->get_data($cm, false);
+    $completiondata = $completion->get_data($cm, false, $userid);
 
     if ($completiondata->completionstate != COMPLETION_INCOMPLETE) {
         return null;

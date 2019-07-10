@@ -383,8 +383,8 @@ function upgrade_block_savepoint($result, $version, $blockname, $allowabort=true
  * @category upgrade
  * @param bool $result false if upgrade step failed, true if completed
  * @param string or float $version main version
- * @param string $type name of plugin
- * @param string $dir location of plugin
+ * @param string $type The type of the plugin.
+ * @param string $plugin The name of the plugin.
  * @param bool $allowabort allow user to abort script execution here
  * @return void
  */
@@ -2342,6 +2342,22 @@ function check_is_https(environment_results $result) {
         $result->setInfo('site not https');
         $result->setStatus(false);
         return $result;
+    }
+    return null;
+}
+
+/**
+ * Check if the site is using 64 bits PHP.
+ *
+ * @param  environment_results $result
+ * @return environment_results|null updated results object, or null if the site is using 64 bits PHP.
+ */
+function check_sixtyfour_bits(environment_results $result) {
+
+    if (PHP_INT_SIZE === 4) {
+         $result->setInfo('php not 64 bits');
+         $result->setStatus(false);
+         return $result;
     }
     return null;
 }

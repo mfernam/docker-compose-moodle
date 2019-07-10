@@ -1341,7 +1341,7 @@ function quiz_update_events($quiz, $override = null) {
                 }
                 $event->name = get_string('quizeventopens', 'quiz', $eventname);
                 // The method calendar_event::create will reuse a db record if the id field is set.
-                calendar_event::create($event);
+                calendar_event::create($event, false);
             }
             if ($timeclose && $addclose) {
                 if ($oldevent = array_shift($oldevents)) {
@@ -1360,7 +1360,7 @@ function quiz_update_events($quiz, $override = null) {
                         $event->priority = $closepriorities[$timeclose];
                     }
                 }
-                calendar_event::create($event);
+                calendar_event::create($event, false);
             }
         }
     }
@@ -1800,9 +1800,7 @@ function quiz_supports($feature) {
 function quiz_get_extra_capabilities() {
     global $CFG;
     require_once($CFG->libdir . '/questionlib.php');
-    $caps = question_get_all_capabilities();
-    $caps[] = 'moodle/site:accessallgroups';
-    return $caps;
+    return question_get_all_capabilities();
 }
 
 /**
@@ -2163,31 +2161,43 @@ function mod_quiz_get_fontawesome_icon_map() {
  *
  * @param calendar_event $event
  * @param \core_calendar\action_factory $factory
+ * @param int $userid User id to use for all capability checks, etc. Set to 0 for current user (default).
  * @return \core_calendar\local\event\entities\action_interface|null
  */
 function mod_quiz_core_calendar_provide_event_action(calendar_event $event,
-                                                     \core_calendar\action_factory $factory) {
+                                                     \core_calendar\action_factory $factory,
+                                                     int $userid = 0) {
     global $CFG, $USER;
 
     require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 
-    $cm = get_fast_modinfo($event->courseid)->instances['quiz'][$event->instance];
-    $quizobj = quiz::create($cm->instance, $USER->id);
+    if (empty($userid)) {
+        $userid = $USER->id;
+    }
+
+    $cm = get_fast_modinfo($event->courseid, $userid)->instances['quiz'][$event->instance];
+    $quizobj = quiz::create($cm->instance, $userid);
     $quiz = $quizobj->get_quiz();
 
     // Check they have capabilities allowing them to view the quiz.
-    if (!has_any_capability(array('mod/quiz:reviewmyattempts', 'mod/quiz:attempt'), $quizobj->get_context())) {
+    if (!has_any_capability(['mod/quiz:reviewmyattempts', 'mod/quiz:attempt'], $quizobj->get_context(), $userid)) {
         return null;
     }
 
-    quiz_update_effective_access($quiz, $USER->id);
+    quiz_update_effective_access($quiz, $userid);
 
     // Check if quiz is closed, if so don't display it.
     if (!empty($quiz->timeclose) && $quiz->timeclose <= time()) {
         return null;
     }
 
-    $attempts = quiz_get_user_attempts($quizobj->get_quizid(), $USER->id);
+    if (!$quizobj->is_participant($userid)) {
+        // If the user is not a participant then they have
+        // no action to take. This will filter out the events for teachers.
+        return null;
+    }
+
+    $attempts = quiz_get_user_attempts($quizobj->get_quizid(), $userid);
     if (!empty($attempts)) {
         // The student's last attempt is finished.
         return null;

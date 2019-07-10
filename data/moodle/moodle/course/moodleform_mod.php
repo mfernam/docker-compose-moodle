@@ -170,7 +170,7 @@ abstract class moodleform_mod extends moodleform {
         global $CFG;
 
         $this->_features = new stdClass();
-        $this->_features->groups            = plugin_supports('mod', $this->_modname, FEATURE_GROUPS, true);
+        $this->_features->groups            = plugin_supports('mod', $this->_modname, FEATURE_GROUPS, false);
         $this->_features->groupings         = plugin_supports('mod', $this->_modname, FEATURE_GROUPINGS, false);
         $this->_features->outcomes          = (!empty($CFG->enableoutcomes) and plugin_supports('mod', $this->_modname, FEATURE_GRADE_OUTCOMES, true));
         $this->_features->hasgrades         = plugin_supports('mod', $this->_modname, FEATURE_GRADE_HAS_GRADE, false);
@@ -289,6 +289,10 @@ abstract class moodleform_mod extends moodleform {
                 // Groupings have no use without groupmode.
                 if ($mform->elementExists('groupingid')) {
                     $mform->removeElement('groupingid');
+                }
+                // Nor does the group restrictions button.
+                if ($mform->elementExists('restrictgroupbutton')) {
+                    $mform->removeElement('restrictgroupbutton');
                 }
             }
         }

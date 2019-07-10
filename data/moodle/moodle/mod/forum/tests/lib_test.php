@@ -3298,6 +3298,17 @@ class mod_forum_lib_testcase extends advanced_testcase {
         // On this freshly created discussion, the teacher is the author of the last post.
         $this->assertEquals($teacher->id, $DB->get_field('forum_discussions', 'usermodified', ['id' => $discussion->id]));
 
+        // Fetch modified timestamp of the discussion.
+        $discussionmodified = $DB->get_field('forum_discussions', 'timemodified', ['id' => $discussion->id]);
+        $pasttime = $discussionmodified - 3600;
+
+        // Adjust the discussion modified timestamp back an hour, so it's in the past.
+        $adjustment = (object)[
+            'id' => $discussion->id,
+            'timemodified' => $pasttime,
+        ];
+        $DB->update_record('forum_discussions', $adjustment);
+
         // Let the student reply to the teacher's post.
         $reply = $generator->create_post((object)[
             'course' => $course->id,
@@ -3310,6 +3321,30 @@ class mod_forum_lib_testcase extends advanced_testcase {
         // The student should now be the last post's author.
         $this->assertEquals($student->id, $DB->get_field('forum_discussions', 'usermodified', ['id' => $discussion->id]));
 
+        // Fetch modified timestamp of the discussion and student's post.
+        $discussionmodified = $DB->get_field('forum_discussions', 'timemodified', ['id' => $discussion->id]);
+        $postmodified = $DB->get_field('forum_posts', 'modified', ['id' => $reply->id]);
+
+        // Discussion modified time should be updated to be equal to the newly created post's time.
+        $this->assertEquals($discussionmodified, $postmodified);
+
+        // Adjust the discussion and post timestamps, so they are in the past.
+        $adjustment = (object)[
+            'id' => $discussion->id,
+            'timemodified' => $pasttime,
+        ];
+        $DB->update_record('forum_discussions', $adjustment);
+
+        $adjustment = (object)[
+            'id' => $reply->id,
+            'modified' => $pasttime,
+        ];
+        $DB->update_record('forum_posts', $adjustment);
+
+        // The discussion and student's post time should now be an hour in the past.
+        $this->assertEquals($pasttime, $DB->get_field('forum_discussions', 'timemodified', ['id' => $discussion->id]));
+        $this->assertEquals($pasttime, $DB->get_field('forum_posts', 'modified', ['id' => $reply->id]));
+
         // Let the teacher edit the student's reply.
         $this->setUser($teacher->id);
         $newpost = (object)[
@@ -3319,8 +3354,14 @@ class mod_forum_lib_testcase extends advanced_testcase {
         ];
         forum_update_post($newpost, null);
 
-        // The student should be still the last post's author.
+        // The student should still be the last post's author.
         $this->assertEquals($student->id, $DB->get_field('forum_discussions', 'usermodified', ['id' => $discussion->id]));
+
+        // The discussion modified time should not have changed.
+        $this->assertEquals($pasttime, $DB->get_field('forum_discussions', 'timemodified', ['id' => $discussion->id]));
+
+        // The post time should be updated.
+        $this->assertGreaterThan($pasttime, $DB->get_field('forum_posts', 'modified', ['id' => $reply->id]));
     }
 
     public function test_forum_core_calendar_provide_event_action() {
@@ -3341,6 +3382,81 @@ class mod_forum_lib_testcase extends advanced_testcase {
 
         // Decorate action event.
         $actionevent = mod_forum_core_calendar_provide_event_action($event, $factory);
+
+        // Confirm the event was decorated.
+        $this->assertInstanceOf('\core_calendar\local\event\value_objects\action', $actionevent);
+        $this->assertEquals(get_string('view'), $actionevent->get_name());
+        $this->assertInstanceOf('moodle_url', $actionevent->get_url());
+        $this->assertEquals(7, $actionevent->get_item_count());
+        $this->assertTrue($actionevent->is_actionable());
+    }
+
+    public function test_forum_core_calendar_provide_event_action_in_hidden_section() {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        // Create a course.
+        $course = $this->getDataGenerator()->create_course();
+
+        // Create a student.
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        // Create the activity.
+        $forum = $this->getDataGenerator()->create_module('forum', array('course' => $course->id,
+                'completionreplies' => 5, 'completiondiscussions' => 2));
+
+        // Create a calendar event.
+        $event = $this->create_action_event($course->id, $forum->id,
+                \core_completion\api::COMPLETION_EVENT_TYPE_DATE_COMPLETION_EXPECTED);
+
+        // Set sections 0 as hidden.
+        set_section_visible($course->id, 0, 0);
+
+        // Now, log out.
+        $CFG->forcelogin = true; // We don't want to be logged in as guest, as guest users might still have some capabilities.
+        $this->setUser();
+
+        // Create an action factory.
+        $factory = new \core_calendar\action_factory();
+
+        // Decorate action event for the student.
+        $actionevent = mod_forum_core_calendar_provide_event_action($event, $factory, $student->id);
+
+        // Confirm the event is not shown at all.
+        $this->assertNull($actionevent);
+    }
+
+    public function test_forum_core_calendar_provide_event_action_for_user() {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        // Create a course.
+        $course = $this->getDataGenerator()->create_course();
+
+        // Create a student.
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        // Create the activity.
+        $forum = $this->getDataGenerator()->create_module('forum', array('course' => $course->id,
+                'completionreplies' => 5, 'completiondiscussions' => 2));
+
+        // Create a calendar event.
+        $event = $this->create_action_event($course->id, $forum->id,
+                \core_completion\api::COMPLETION_EVENT_TYPE_DATE_COMPLETION_EXPECTED);
+
+        // Now log out.
+        $CFG->forcelogin = true; // We don't want to be logged in as guest, as guest users might still have some capabilities.
+        $this->setUser();
+
+        // Create an action factory.
+        $factory = new \core_calendar\action_factory();
+
+        // Decorate action event for the student.
+        $actionevent = mod_forum_core_calendar_provide_event_action($event, $factory, $student->id);
 
         // Confirm the event was decorated.
         $this->assertInstanceOf('\core_calendar\local\event\value_objects\action', $actionevent);
@@ -3407,6 +3523,45 @@ class mod_forum_lib_testcase extends advanced_testcase {
 
         // Decorate action event.
         $actionevent = mod_forum_core_calendar_provide_event_action($event, $factory);
+
+        // Ensure result was null.
+        $this->assertNull($actionevent);
+    }
+
+    public function test_forum_core_calendar_provide_event_action_already_completed_for_user() {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $CFG->enablecompletion = 1;
+
+        // Create a course.
+        $course = $this->getDataGenerator()->create_course(array('enablecompletion' => 1));
+
+        // Create a student.
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        // Create the activity.
+        $forum = $this->getDataGenerator()->create_module('forum', array('course' => $course->id),
+            array('completion' => 2, 'completionview' => 1, 'completionexpected' => time() + DAYSECS));
+
+        // Get some additional data.
+        $cm = get_coursemodule_from_instance('forum', $forum->id);
+
+        // Create a calendar event.
+        $event = $this->create_action_event($course->id, $forum->id,
+            \core_completion\api::COMPLETION_EVENT_TYPE_DATE_COMPLETION_EXPECTED);
+
+        // Mark the activity as completed for the student.
+        $completion = new completion_info($course);
+        $completion->set_module_viewed($cm, $student->id);
+
+        // Create an action factory.
+        $factory = new \core_calendar\action_factory();
+
+        // Decorate action event.
+        $actionevent = mod_forum_core_calendar_provide_event_action($event, $factory, $student->id);
 
         // Ensure result was null.
         $this->assertNull($actionevent);

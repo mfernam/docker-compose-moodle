@@ -780,7 +780,7 @@ function scorm_grade_user($scorm, $userid) {
 
     switch ($scorm->whatgrade) {
         case FIRSTATTEMPT:
-            return scorm_grade_user_attempt($scorm, $userid, 1);
+            return scorm_grade_user_attempt($scorm, $userid, scorm_get_first_attempt($scorm->id, $userid));
         break;
         case LASTATTEMPT:
             return scorm_grade_user_attempt($scorm, $userid, scorm_get_last_completed_attempt($scorm->id, $userid));
@@ -842,6 +842,30 @@ function scorm_get_last_attempt($scormid, $userid) {
     $sql = "SELECT MAX(attempt)
               FROM {scorm_scoes_track}
              WHERE userid = ? AND scormid = ?";
+    $lastattempt = $DB->get_field_sql($sql, array($userid, $scormid));
+    if (empty($lastattempt)) {
+        return '1';
+    } else {
+        return $lastattempt;
+    }
+}
+
+/**
+ * Returns the first attempt used - if no attempts yet, returns 1 for first attempt.
+ *
+ * @param int $scormid the id of the scorm.
+ * @param int $userid the id of the user.
+ *
+ * @return int The first attempt number.
+ */
+function scorm_get_first_attempt($scormid, $userid) {
+    global $DB;
+
+    // Find the first attempt number for the given user id and scorm id.
+    $sql = "SELECT MIN(attempt)
+              FROM {scorm_scoes_track}
+             WHERE userid = ? AND scormid = ?";
+
     $lastattempt = $DB->get_field_sql($sql, array($userid, $scormid));
     if (empty($lastattempt)) {
         return '1';
@@ -2098,10 +2122,11 @@ function scorm_check_launchable_sco($scorm, $scoid) {
  * @param  stdClass  $scorm            SCORM record
  * @param  boolean $checkviewreportcap Check the scorm:viewreport cap
  * @param  stdClass  $context          Module context, required if $checkviewreportcap is set to true
+ * @param  int  $userid                User id override
  * @return array                       status (available or not and possible warnings)
  * @since  Moodle 3.0
  */
-function scorm_get_availability_status($scorm, $checkviewreportcap = false, $context = null) {
+function scorm_get_availability_status($scorm, $checkviewreportcap = false, $context = null, $userid = null) {
     $open = true;
     $closed = false;
     $warnings = array();
@@ -2115,7 +2140,7 @@ function scorm_get_availability_status($scorm, $checkviewreportcap = false, $con
     }
 
     if (!$open or $closed) {
-        if ($checkviewreportcap and !empty($context) and has_capability('mod/scorm:viewreport', $context)) {
+        if ($checkviewreportcap and !empty($context) and has_capability('mod/scorm:viewreport', $context, $userid)) {
             return array(true, $warnings);
         }
 
@@ -2397,7 +2422,7 @@ function scorm_update_calendar(stdClass $scorm, $cmid) {
             $event->timeduration = 0;
 
             $calendarevent = calendar_event::load($event->id);
-            $calendarevent->update($event);
+            $calendarevent->update($event, false);
         } else {
             // Calendar event is on longer needed.
             $calendarevent = calendar_event::load($event->id);
@@ -2418,7 +2443,7 @@ function scorm_update_calendar(stdClass $scorm, $cmid) {
             $event->visible = instance_is_visible('scorm', $scorm);
             $event->timeduration = 0;
 
-            calendar_event::create($event);
+            calendar_event::create($event, false);
         }
     }
 
@@ -2438,7 +2463,7 @@ function scorm_update_calendar(stdClass $scorm, $cmid) {
             $event->timeduration = 0;
 
             $calendarevent = calendar_event::load($event->id);
-            $calendarevent->update($event);
+            $calendarevent->update($event, false);
         } else {
             // Calendar event is on longer needed.
             $calendarevent = calendar_event::load($event->id);
@@ -2459,7 +2484,7 @@ function scorm_update_calendar(stdClass $scorm, $cmid) {
             $event->visible = instance_is_visible('scorm', $scorm);
             $event->timeduration = 0;
 
-            calendar_event::create($event);
+            calendar_event::create($event, false);
         }
     }
 

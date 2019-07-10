@@ -360,6 +360,19 @@ class question_attempt {
     }
 
     /**
+     * When the question is rendered, this unique id is added to the
+     * outer div of the question. It can be used to uniquely reference
+     * the question from JavaScript.
+     *
+     * Note, this is not truly unique. It will be changed in Moodle 3.7. See MDL-65029.
+     *
+     * @return string id added to the outer <div class="que ..."> when the question is rendered.
+     */
+    public function get_outer_question_div_unique_id() {
+        return 'q' . $this->slot;
+    }
+
+    /**
      * Get one of the steps in this attempt.
      *
      * @param int $i the step number, which counts from 0.
@@ -1184,7 +1197,7 @@ class question_attempt {
     protected function check_qt_var_name_restrictions($expected) {
         global $CFG;
 
-        if ($CFG->debugdeveloper) {
+        if ($CFG->debugdeveloper && $expected !== self::USE_RAW_DATA) {
             foreach ($expected as $key => $value) {
                 if (strpos($key, 'bf_') !== false) {
                     debugging('The bf_ prefix is reserved and cannot be used by question types', DEBUG_DEVELOPER);

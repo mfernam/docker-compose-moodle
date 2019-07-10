@@ -269,7 +269,7 @@ $string['questiondoesnotexist'] = 'This question does not exist';
 $string['questionname'] = 'Question name';
 $string['questionno'] = 'Question {$a}';
 $string['questionsaveerror'] = 'Errors occur during saving question - ({$a})';
-$string['questionsinuse'] = '(* Questions marked by an asterisk are already in use in some quizzes. These question will not be deleted from these quizzes but only from the category list.)';
+$string['questionsinuse'] = '(* Questions marked by an asterisk are already in use in some quizzes. These questions will not be deleted from these quizzes but only from the category list.)';
 $string['questionsmovedto'] = 'Questions still in use moved to "{$a}" in the parent course category.';
 $string['questionsrescuedfrom'] = 'Questions saved from context {$a}.';
 $string['questionsrescuedfrominfo'] = 'These questions (some of which may be hidden) were saved when context {$a} was deleted because they are still used by some quizzes or other activities.';
@@ -384,9 +384,11 @@ $string['partiallycorrectfeedbackdefault'] = 'Your answer is partially correct.'
 $string['penaltyforeachincorrecttry'] = 'Penalty for each incorrect try';
 $string['penaltyforeachincorrecttry_help'] = 'When questions are run using the \'Interactive with multiple tries\' or \'Adaptive mode\' behaviour, so that the student will have several tries to get the question right, then this option controls how much they are penalised for each incorrect try.
 
-The penalty is a proportion of the total question grade, so if the question is worth three marks, and the penalty is 0.3333333, then the student will score 3 if they get the question right first time, 2 if they get it right second try, and 1 of they get it right on the third try.';
+The penalty is a proportion of the total question grade, so if the question is worth three marks, and the penalty is 0.3333333, then the student will score 3 if they get the question right first time, 2 if they get it right second try, and 1 of they get it right on the third try.
+
+For some multi-part questions this scoring logic is applied separately to each part of the question. The details depend on the question type and can be complicated, but the principle is to give students credit for the knowledge they have demonstrated as fairly as possible.';
 $string['previewquestion'] = 'Preview question: {$a}';
-$string['privacy:metadata:database:question'] = 'The details about an specific question.';
+$string['privacy:metadata:database:question'] = 'The details about a specific question.';
 $string['privacy:metadata:database:question:createdby'] = 'The person who created the question.';
 $string['privacy:metadata:database:question:generalfeedback'] = 'The general feedback for this question.';
 $string['privacy:metadata:database:question:modifiedby'] = 'The person who last updated the question.';
@@ -411,9 +413,9 @@ $string['privacy:metadata:link:qformat'] = 'The Question subsystem makes use of 
 $string['privacy:metadata:link:qtype'] = 'The Question subsystem interacts with the Question Type plugintype which contains the different types of questions.';
 $string['questionbehaviouradminsetting'] = 'Question behaviour settings';
 $string['questionbehavioursdisabled'] = 'Question behaviours to disable';
-$string['questionbehavioursdisabledexplained'] = 'Enter a comma separated list of behaviours you do not want to appear in dropdown menu';
+$string['questionbehavioursdisabledexplained'] = 'Enter a comma-separated list of behaviours you do not want to appear in the drop-down menu.';
 $string['questionbehavioursorder'] = 'Question behaviours order';
-$string['questionbehavioursorderexplained'] = 'Enter a comma separated list of behaviours in the order you want them to appear in dropdown menu';
+$string['questionbehavioursorderexplained'] = 'Enter a comma-separated list of behaviours in the order you want them to appear in the drop-down menu.';
 $string['questionidmismatch'] = 'Question ids mismatch';
 $string['questionformtagheader'] = '{$a} tags';
 $string['questionname'] = 'Question name';
@@ -429,7 +431,7 @@ $string['restart'] = 'Start again';
 $string['restartwiththeseoptions'] = 'Start again with these options';
 $string['restoremultipletopcats'] = 'The backup file contains more than one top-level question categories for context {$a}.';
 $string['rightanswer'] = 'Right answer';
-$string['rightanswer_help'] = 'an automatically generated summary of the correct response. This can be limited, so you may wish to consider explaining the correct solution in the general feedback for the question, and turning this option off.';
+$string['rightanswer_help'] = 'An automatically generated summary of the correct response. This can be limited, so you may wish to consider explaining the correct solution in the general feedback for the question, and turning this option off.';
 $string['saved'] = 'Saved: {$a}';
 $string['saveflags'] = 'Save the state of the flags';
 $string['settingsformultipletries'] = 'Multiple tries';

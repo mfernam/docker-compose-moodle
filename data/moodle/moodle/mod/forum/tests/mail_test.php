@@ -286,7 +286,9 @@ class mod_forum_mail_testcase extends advanced_testcase {
 
         // Reset the message sink for other tests.
         $this->helper->messagesink = $this->redirectMessages();
+        // Notification has been marked as read, so now first event should be a 'notification_viewed' one.
         $event = reset($events);
+
         $this->assertEquals($course->id, $event->other['courseid']);
     }
 

@@ -122,7 +122,7 @@ $string['groupnotamember'] = 'Sorry, you are not a member of that group';
 $string['groups'] = 'Groups';
 $string['groupscount'] = 'Groups ({$a})';
 $string['groupsettingsheader'] = 'Groups';
-$string['groupsgroupings'] = 'Groups &amp; groupings';
+$string['groupsgroupings'] = 'Groups & groupings';
 $string['groupsinselectedgrouping'] = 'Groups in:';
 $string['groupsnone'] = 'No groups';
 $string['groupsonly'] = 'Groups only';
@@ -138,7 +138,7 @@ $string['importgroups_help'] = 'Groups may be imported via text file. The format
 * Each record is a series of data separated by commas
 * The first record contains a list of fieldnames defining the format of the rest of the file
 * Required fieldname is groupname
-* Optional fieldnames are description, enrolmentkey, picture, hidepicture';
+* Optional fieldnames are groupidnumber, description, enrolmentkey, groupingname';
 $string['importgroups_link'] = 'group/import';
 $string['includeonlyactiveenrol'] = 'Include only active enrolments';
 $string['includeonlyactiveenrol_help'] = 'If enabled, suspended users will not be included in groups.';

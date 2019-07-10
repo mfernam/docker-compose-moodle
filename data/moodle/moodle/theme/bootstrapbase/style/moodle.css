@@ -5915,6 +5915,9 @@ img.iconsmall {
 .calendarwrapper {
   position: relative;
 }
+.summary-modal-container .description-content {
+  overflow-wrap: break-word;
+}
 .summary-modal-container .description-content > p {
   margin: 0;
 }
@@ -8577,6 +8580,7 @@ a.ygtvspacer:hover {
   display: table-cell;
 }
 .messaging-area-container .messaging-area .messages-area .response .message-box .message-text-container textarea {
+  direction: ltr;
   width: 100%;
   margin: 0;
   resize: none;
@@ -16030,6 +16034,10 @@ body {
 .editing .block .header .commands img.actionmenu {
   width: auto;
 }
+.editing .block .header .commands .toggle-display[role="menuitem"] img.icon {
+  width: 22px;
+  vertical-align: middle;
+}
 .jsenabled .block.hidden .content {
   display: none;
 }
@@ -16597,8 +16605,14 @@ form {
 .jsenabled .mform .collapsed .fcontainer {
   display: none;
 }
-.mform .fitem .fitemtitle div {
+.mform .fitem .fitemtitle > div:not(.mediaplugin) div {
   display: inline;
+}
+.mform .fitem .fitemtitle .mediaplugin > div {
+  margin: 0;
+}
+.que.match .mediaplugin {
+  width: 50vw;
 }
 #adminsettings .error,
 .loginpanel .error,
@@ -22079,4 +22093,13 @@ ul.indented-list {
 }
 .w-100 {
   width: 100%;
+}
+.w-75 {
+  width: 75%;
+}
+.w-50 {
+  width: 50%;
+}
+.w-25 {
+  width: 25%;
 }
